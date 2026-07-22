@@ -48,3 +48,17 @@ jobs:
             "${{ matrix.project }}-dist.zip" \
             "${{ matrix.project }}-dist.tar.gz" \
             --clobber
+
+  attach-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload install.sh to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          sed "1i # Release: ${tag}" "wallmonitor/install.sh" > "install.sh"
+          gh release upload "$tag" "install.sh" --clobber
