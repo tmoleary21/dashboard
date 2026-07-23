@@ -56,12 +56,12 @@ cd -
 
 # Prep dependencies
 
-sudo apt update
+sudo apt-get update
 
 # Install chromium
 
-sudo apt install chromium >> $log_file
-sudo apt install cage >> $log_file
+sudo apt-get install -y chromium >> $log_file
+sudo apt-get install -y cage >> $log_file
 
 # Start wrapper
 
