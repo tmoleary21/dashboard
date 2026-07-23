@@ -2,6 +2,8 @@
 
 # Prepare
 
+log_file=./wallmonitor_install.log
+
 repository_url="https://github.com/tmoleary21/dashboard"
 latest_release="$repository_url/releases/latest/download"
 app_dir=/var/dashboard
@@ -10,11 +12,14 @@ mkdir -p "$app_dir"
 # Update script
 
 script_url="$latest_release/install.sh"
-if wget -O new-install.sh "$script_url"; then
+if wget -O new-install.sh "$script_url" >> $log_file; then
   new_release_tag=$(sed -n '1s/^# Release: //p' new-install.sh)
+  echo $new_release_tag >> $log_file
   this_release_tag=$(sed -n '1s/^# Release: //p' install.sh)
+  echo $this_release_tag >> $log_file
 
   if [ "$new_release_tag" != "$this_release_tag" ]; then
+    echo "install script updated" >> $log_file
     # mv new-install.sh "$app_dir"
     script_path="$app_dir/install.sh"
     if [ -e "$script_path" ]; then
@@ -24,6 +29,7 @@ if wget -O new-install.sh "$script_url"; then
     chmod +x "$script_path"
     exec "$script_path" "$@" # Runs instead. Replaces running script
   else 
+    echo "no install script update" >> $log_file
     rm new-install.sh
   fi
 fi
@@ -32,7 +38,9 @@ fi
 
 wrapper_dist_url="$latest_release/wrapper-dist.tar.gz"
 if ! wget "$wrapper_dist_url"; then
-  echo "Could not retrieve dist from $wrapper_dist_url"
+  msg="Could not retrieve dist from $wrapper_dist_url"
+  echo $msg
+  echo $msg >> $log_file
   exit
 fi
 
@@ -42,6 +50,7 @@ mkdir -p "$app_dir/wrapper"
 mv ./wrapper-dist.tar.gz "$app_dir/wrapper"
 cd "$app_dir/wrapper"
 tar -xf ./wrapper-dist.tar.gz
+rm -rf ./dist
 mv ./wrapper-dist ./dist
 cd -
 
@@ -51,8 +60,8 @@ sudo apt update
 
 # Install chromium
 
-sudo apt install chromium
-sudo apt install cage
+sudo apt install chromium >> $log_file
+sudo apt install cage >> $log_file
 
 # Start wrapper
 
