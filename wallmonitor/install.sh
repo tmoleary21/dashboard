@@ -49,9 +49,8 @@ fi
 mkdir -p "$app_dir/wrapper"
 mv ./wrapper-dist.tar.gz "$app_dir/wrapper"
 cd "$app_dir/wrapper"
-tar -xf ./wrapper-dist.tar.gz
 rm -rf ./dist
-mv ./wrapper-dist ./dist
+tar -xf ./wrapper-dist.tar.gz
 cd -
 
 # Prep dependencies
