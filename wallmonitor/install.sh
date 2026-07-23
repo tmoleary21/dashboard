@@ -64,13 +64,13 @@ sudo apt-get install -y cage >> $log_file
 
 # Start wrapper
 
-cd "$app_dir/dist"
+cd "$app_dir/wrapper/dist"
 python3 -m http.server 8000 --bind 127.0.0.1 &
 cd -
 
 # Stark kiosk mode
 
-cage -s -d -- chromium --kiosk --noerrdialogs --no-first-run --disable-infobars \
+XDG_RUNTIME_DIR=/run/user/$(id -u) cage -s -d -- chromium --kiosk --noerrdialogs --no-first-run --disable-infobars \
   --disable-session-crashed-bubble --disable-features=TranslateUI \
   --check-for-update-interval=31536000 \
   --app=http://127.0.0.1:8000
