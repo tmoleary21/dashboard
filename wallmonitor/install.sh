@@ -52,6 +52,7 @@ sudo apt update
 # Install chromium
 
 sudo apt install chromium
+sudo apt install cage
 
 # Start wrapper
 
@@ -61,7 +62,7 @@ cd -
 
 # Stark kiosk mode
 
-chromium-browser --kiosk --noerrdialogs --no-first-run --disable-infobars \
+cage -s -d -- chromium --kiosk --noerrdialogs --no-first-run --disable-infobars \
   --disable-session-crashed-bubble --disable-features=TranslateUI \
   --check-for-update-interval=31536000 \
   --app=http://127.0.0.1:8000
