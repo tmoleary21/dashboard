@@ -1,4 +1,6 @@
-# Github action release.yml adds "# Release: <tag>" to the top of this file (above here)
+#!/bin/bash
+# Release: dev
+# ^ Github action release.yml replaces the line above with "# Release: <tag>"
 
 # Prepare
 
@@ -13,9 +15,9 @@ mkdir -p "$app_dir"
 
 script_url="$latest_release/install.sh"
 if wget -O new-install.sh "$script_url" >> $log_file; then
-  new_release_tag=$(sed -n '1s/^# Release: //p' ./new-install.sh)
+  new_release_tag=$(sed -n '2s/^# Release: //p' ./new-install.sh)
   echo $new_release_tag >> $log_file
-  this_release_tag=$(sed -n '1s/^# Release: //p' ./install.sh)
+  this_release_tag=$(sed -n '2s/^# Release: //p' ./install.sh)
   echo $this_release_tag >> $log_file
 
   if [ "$new_release_tag" != "$this_release_tag" ]; then

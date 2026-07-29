@@ -60,5 +60,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${{ github.event.release.tag_name }}"
-          sed "1i # Release: ${tag}" "wallmonitor/install.sh" > "install.sh"
+          sed "2s/.*/# Release: ${tag}/" "wallmonitor/install.sh" > "install.sh"
           gh release upload "$tag" "install.sh" --clobber
