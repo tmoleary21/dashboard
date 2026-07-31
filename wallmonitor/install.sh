@@ -100,23 +100,35 @@ usermod -aG video,input,render,seat "$KIOSK_USER"
 
 KIOSK_HOME=$(getent passwd "$KIOSK_USER" | cut -d: -f6)
 
-# Start wrapper
+# Serve wrapper app
 
 KIOSK_BIND_URL=127.0.0.1
 KIOSK_PORT=8000
-cd "$app_dir/wrapper/dist"
-python3 -m http.server "$KIOSK_PORT" --bind "$KIOSK_BIND_URL" &
-cd -
+
+echo "==> Installing wallmonitor-wrapper systemd service..."
+cat > /etc/systemd/system/wallmonitor-wrapper.service <<EOF
+[Unit]
+Description=Wallmonitor wrapper static file server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=$app_dir/wrapper/dist
+ExecStart=/usr/bin/python3 -m http.server $KIOSK_PORT --bind $KIOSK_BIND_URL
+Restart=always
+RestartSec=1
+User=$KIOSK_USER
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now wallmonitor-wrapper.service
 
 # Enable kiosk mode
 
 KIOSK_URL="http://${KIOSK_BIND_URL}:${KIOSK_PORT}"
-# export XDG_RUNTIME_DIR=/run/user/$(id -u)
-
-# cage -s -d -- chromium --enable-features=UseOzonePlatform --ozone-platform=wayland --kiosk --noerrdialogs --no-first-run --disable-infobars \
-#   --disable-session-crashed-bubble --disable-features=TranslateUI \
-#   --check-for-update-interval=31536000 \
-#   --app=http://127.0.0.1:8000
 
 echo "==> Writing ${KIOSK_HOME}/.bash_profile..."
 cat > "${KIOSK_HOME}/.bash_profile" <<EOF
