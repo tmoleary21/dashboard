@@ -95,6 +95,7 @@ else
 fi
 
 echo "==> Adding '${KIOSK_USER}' to required groups..."
+groupadd -f seat
 usermod -aG video,input,render,seat "$KIOSK_USER"
 
 KIOSK_HOME=$(getent passwd "$KIOSK_USER" | cut -d: -f6)
