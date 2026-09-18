@@ -67,7 +67,6 @@ mv ./wrapper-dist.tar.gz "$app_dir/wrapper"
 cd "$app_dir/wrapper"
 rm -rf ./dist
 tar -xf ./wrapper-dist.tar.gz
-cd -
 
 # Prep dependencies
 
@@ -79,9 +78,6 @@ apt-get update
 # - seatd as a dependency to cage
 
 apt-get install -y cage chromium seatd >> $log_file
-
-# Set up seatd
-
 systemctl enable --now seatd
 
 # Kiosk user
