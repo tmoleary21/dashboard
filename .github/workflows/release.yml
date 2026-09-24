@@ -58,9 +58,10 @@ jobs:
       - name: Package wallmonitor scripts
         run: |
           tag="${{ github.event.release.tag_name }}"
-          sed "2s/.*/export VERSION=\"${tag}\"/" "wallmonitor/install.sh" > "wallmonitor/install.sh"
+          sed -i "2s|.*|export VERSION=\"${tag}\"|" "wallmonitor/install.sh"
           zip -r "wallmonitor.zip" wallmonitor
           tar -czf "wallmonitor.tar.gz" wallmonitor
+
 
       - name: Upload wallmonitor scripts to release
         env:
