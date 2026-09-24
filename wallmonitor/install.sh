@@ -19,7 +19,7 @@ log_file=./wallmonitor_install.log
 
 repository_url="https://github.com/tmoleary21/dashboard"
 latest_release="$repository_url/releases/latest/download" # Unused. Could be fallback here, but will definitely be needed in update.sh
-versioned_release="$repository_url/releases/tag/$VERSION"
+versioned_release="$repository_url/releases/download/$VERSION"
 app_dir=/var/dashboard
 mkdir -p "$app_dir"
 
@@ -45,7 +45,7 @@ fi
 
 mv ./wallmonitor.tar.gz "$app_dir"
 cd "$app_dir"
-tar -xf ./wallmonitor.tar.gz
+tar -xvf ./wallmonitor.tar.gz
 scripts_dir="$app_dir/wallmonitor"
 cd "$scripts_dir"
 
@@ -74,7 +74,7 @@ mkdir -p "$app_dir/wrapper"
 mv ./wrapper-dist.tar.gz "$app_dir/wrapper"
 cd "$app_dir/wrapper"
 rm -rf ./dist
-tar -xf ./wrapper-dist.tar.gz
+tar -xvf ./wrapper-dist.tar.gz
 
 # Prep dependencies
 
