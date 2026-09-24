@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Release: dev
-# ^ Github action release.yml replaces the line above with "# Release: <tag>"
+export VERSION="dev"
+# ^ Github action release.yml replaces the line above with 'export VERSION="<tag>"'
+
+# RESPONSIBILITY: INSTALL ONLY THIS VERSION
 
 set -euo pipefail
 
@@ -16,49 +18,41 @@ fi
 log_file=./wallmonitor_install.log
 
 repository_url="https://github.com/tmoleary21/dashboard"
-latest_release="$repository_url/releases/latest/download"
+latest_release="$repository_url/releases/latest/download" # Unused. Could be fallback here, but will definitely be needed in update.sh
+versioned_release="$repository_url/releases/tag/$VERSION"
 app_dir=/var/dashboard
 mkdir -p "$app_dir"
 
-# Update script
-
-script_url="$latest_release/install.sh"
-if wget -O new-install.sh "$script_url" >> $log_file; then
-  new_release_tag=$(sed -n '2s/^# Release: //p' ./new-install.sh)
-  echo $new_release_tag >> $log_file
-  this_release_tag=$(sed -n '2s/^# Release: //p' ./install.sh)
-  echo $this_release_tag >> $log_file
-
-  if [ "$new_release_tag" != "$this_release_tag" ]; then
-    echo "install script updated" >> $log_file
-
-    mv new-install.sh "$app_dir"
-    cd "$app_dir"
-    script_path="./install.sh"
-
-    if [ -e "$script_path" ]; then
-      mv "$script_path" "./old-install.sh"
-    fi
-    mv new-install.sh "$script_path"
-    chmod +x "$script_path"
-
-    exec ./install.sh "$@"  # Runs instead. Replaces running script
-
-  else 
-    echo "no install script update" >> $log_file
-    rm new-install.sh
-  fi
-fi
-
 # Download wrapper app
 
-wrapper_dist_url="$latest_release/wrapper-dist.tar.gz"
+wrapper_dist_url="$versioned_release/wrapper-dist.tar.gz"
 if ! wget "$wrapper_dist_url"; then
   msg="Could not retrieve dist from $wrapper_dist_url"
   echo $msg
   echo $msg >> $log_file
   exit 2
 fi
+
+wallmonitor_url="$versioned_release/wallmonitor.tar.gz"
+if ! wget "$wallmonitor_url"; then
+  msg="Could not retrieve wallmonitor scripts from $wallmonitor_url"
+  echo $msg
+  echo $msg >> $log_file
+  exit 2
+fi
+
+# Install scripts
+
+mv ./wallmonitor.tar.gz "$app_dir"
+cd "$app_dir"
+tar -xf ./wallmonitor.tar.gz
+
+# Add to this with more environment variables if needed in the future
+cat > environment.sh <<EOF
+export VERSION=$VERSION
+EOF
+
+chmod +x environment.sh
 
 # Install wrapper app
 
@@ -96,7 +90,7 @@ usermod -aG video,input,render,seat "$KIOSK_USER"
 
 KIOSK_HOME=$(getent passwd "$KIOSK_USER" | cut -d: -f6)
 
-# Serve wrapper app
+# Setup wrapper app service
 
 KIOSK_BIND_URL=127.0.0.1
 KIOSK_PORT=8000
@@ -120,28 +114,7 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now wallmonitor-wrapper.service
-
-# Enable kiosk mode
-
-KIOSK_URL="http://${KIOSK_BIND_URL}:${KIOSK_PORT}"
-
-echo "==> Writing ${KIOSK_HOME}/.bash_profile..."
-cat > "${KIOSK_HOME}/.bash_profile" <<EOF
-if [ -z "\$DISPLAY" ] && [ "\$(tty)" = "/dev/tty1" ]; then
-    while true; do
-        cage -s -d -- chromium --kiosk --app=${KIOSK_URL} \\
-            --enable-features=UseOzonePlatform --ozone-platform=wayland \\
-            --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
-            --disable-features=TranslateUI --no-first-run --disable-infobars \\
-            --check-for-update-interval=31536000
-        sleep 2
-    done
-fi
-EOF
-
-chown "${KIOSK_USER}:${KIOSK_USER}" "${KIOSK_HOME}/.bash_profile"
-chmod 644 "${KIOSK_HOME}/.bash_profile"
+systemctl enable wallmonitor-wrapper.service # No --now. Job of start.sh
 
 # Configure autologin
 
@@ -163,4 +136,9 @@ echo "==> Done."
 echo "    Kiosk user:  ${KIOSK_USER}"
 echo "    Kiosk URL:   ${KIOSK_URL}"
 echo ""
-echo "Reboot to test: sudo reboot"
+echo "Reboot to test auto start: sudo reboot"
+
+# Start
+
+exec ./start.sh
+
