@@ -56,9 +56,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Package wallmonitor scripts
-        # working-directory: wallmonitor
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${{ github.event.release.tag_name }}"
           sed "2s/.*/export VERSION=\"${tag}\"/" "wallmonitor/install.sh" > "wallmonitor/install.sh"

@@ -1,9 +1,8 @@
 # Start process:
 # If not installed, prompt user to run install
 # Check for updates, and run update
-# Create systemd unit for wrapper app server
-# Start kiosk mode
-# Enable autologin (should this be in install?)
+# Start the wrapper app server and the kiosk browser
+# (Installing and enabling the units is install.sh's job)
 
 # RESPONSIBILITY: RUN UPDATE CHECKER, IF UPDATE RUN UPDATE, IF NOT RUN THIS VERSION
 
@@ -30,30 +29,12 @@ if ./check-update.sh; then
     exec ./update.sh
 fi
 
-# Ensure wallmonitor wrapper service is started
+# Ensure services are started. Both are installed and enabled by install.sh, so
+# on a normal boot systemd has already brought them up and these are no-ops.
+# The kiosk unit waits for the wrapper to actually answer before starting cage.
 
 systemctl start wallmonitor-wrapper.service
-
-# Enable kiosk mode
-
-KIOSK_URL="http://${KIOSK_BIND_URL}:${KIOSK_PORT}"
-
-echo "==> Writing ${KIOSK_HOME}/.bash_profile..."
-cat > "${KIOSK_HOME}/.bash_profile" <<EOF
-if [ -z "\$DISPLAY" ] && [ "\$(tty)" = "/dev/tty1" ]; then
-    while true; do
-        cage -s -d -- chromium --kiosk --app=${KIOSK_URL} \\
-            --enable-features=UseOzonePlatform --ozone-platform=wayland \\
-            --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
-            --disable-features=TranslateUI --no-first-run --disable-infobars \\
-            --check-for-update-interval=31536000
-        sleep 2
-    done
-fi
-EOF
-
-chown "${KIOSK_USER}:${KIOSK_USER}" "${KIOSK_HOME}/.bash_profile"
-chmod 644 "${KIOSK_HOME}/.bash_profile"
+systemctl start wallmonitor-kiosk.service
 
 # END START
 

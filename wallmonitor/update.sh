@@ -27,6 +27,7 @@ app_dir=/var/dashboard
 
 # Use new install script
 
+script_url="$latest_release/install.sh"
 if [ ! -f "new-install.sh" ]; then
     if ! wget -O new-install.sh "$script_url" >> $log_file; then
         exit 2

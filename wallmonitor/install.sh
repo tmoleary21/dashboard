@@ -46,10 +46,24 @@ fi
 mv ./wallmonitor.tar.gz "$app_dir"
 cd "$app_dir"
 tar -xf ./wallmonitor.tar.gz
+scripts_dir="$app_dir/wallmonitor"
+cd "$scripts_dir"
+
+# Kiosk configuration. Written to environment.sh so start.sh, check-update.sh and
+# update.sh all read the same values instead of redefining them.
+
+KIOSK_USER="kiosk"
+KIOSK_BIND_URL=127.0.0.1
+KIOSK_PORT=8000
+KIOSK_URL="http://${KIOSK_BIND_URL}:${KIOSK_PORT}"
 
 # Add to this with more environment variables if needed in the future
 cat > environment.sh <<EOF
 export VERSION=$VERSION
+export KIOSK_USER=$KIOSK_USER
+export KIOSK_BIND_URL=$KIOSK_BIND_URL
+export KIOSK_PORT=$KIOSK_PORT
+export KIOSK_URL=$KIOSK_URL
 EOF
 
 chmod +x environment.sh
@@ -76,7 +90,6 @@ systemctl enable --now seatd
 
 # Kiosk user
 
-KIOSK_USER="kiosk"
 echo "==> Creating user '${KIOSK_USER}' (if not already present)..."
 if id "$KIOSK_USER" &>/dev/null; then
     echo "    User '${KIOSK_USER}' already exists, skipping creation."
@@ -88,12 +101,7 @@ echo "==> Adding '${KIOSK_USER}' to required groups..."
 groupadd -f seat
 usermod -aG video,input,render,seat "$KIOSK_USER"
 
-KIOSK_HOME=$(getent passwd "$KIOSK_USER" | cut -d: -f6)
-
 # Setup wrapper app service
-
-KIOSK_BIND_URL=127.0.0.1
-KIOSK_PORT=8000
 
 echo "==> Installing wallmonitor-wrapper systemd service..."
 cat > /etc/systemd/system/wallmonitor-wrapper.service <<EOF
@@ -116,20 +124,61 @@ EOF
 systemctl daemon-reload
 systemctl enable wallmonitor-wrapper.service # No --now. Job of start.sh
 
-# Configure autologin
+# Setup kiosk browser service
+#
+# The unit owns tty1 directly, so no autologin/.bash_profile chain is needed.
+# PAMName=login makes pam_systemd open a real login session for the kiosk user,
+# which is what gives cage its seat and XDG_RUNTIME_DIR.
 
-echo "==> Configuring autologin on tty1 for '${KIOSK_USER}'..."
-mkdir -p /etc/systemd/system/getty@tty1.service.d
-cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf <<EOF
+echo "==> Installing wallmonitor-kiosk systemd service..."
+cat > /etc/systemd/system/wallmonitor-kiosk.service <<EOF
+[Unit]
+Description=Wallmonitor kiosk browser
+Wants=wallmonitor-wrapper.service
+After=wallmonitor-wrapper.service seatd.service systemd-user-sessions.service
+Conflicts=getty@tty1.service
+After=getty@tty1.service
+# A wall display should retry forever rather than give up after the default
+# limit of 5 starts in 10s.
+StartLimitIntervalSec=0
+
 [Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin ${KIOSK_USER} --noclear %I \$TERM
+Type=simple
+User=$KIOSK_USER
+
+# Stuff I don't understand yet. But provides a TTY and a seat for cage
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+StandardOutput=journal
+StandardError=journal
+UtmpIdentifier=tty1
+UtmpMode=user
+
+# wallmonitor-wrapper is Type=simple, so systemd considers it started as soon as
+# python3 execs - before the socket is listening. Wait for a real response so
+# chromium doesn't load an error page and sit on it.
+ExecStartPre=/bin/sh -c 'for i in \$(seq 1 60); do wget -q -O /dev/null "$KIOSK_URL" && exit 0; sleep 0.5; done; exit 1'
+ExecStart=/usr/bin/cage -s -d -- /usr/bin/chromium --kiosk --app=$KIOSK_URL \\
+    --enable-features=UseOzonePlatform --ozone-platform=wayland \\
+    --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
+    --disable-features=TranslateUI --no-first-run \\
+    --check-for-update-interval=31536000
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
 EOF
+
 
 # Finish
 
 systemctl daemon-reload
-systemctl restart getty@tty1
+systemctl enable wallmonitor-kiosk.service # No --now. Job of start.sh
 
 echo ""
 echo "==> Done."
@@ -140,5 +189,6 @@ echo "Reboot to test auto start: sudo reboot"
 
 # Start
 
+cd "$scripts_dir"
 exec ./start.sh
 
