@@ -32,6 +32,9 @@ if ! wget "$wrapper_dist_url"; then
   echo $msg >> $log_file
   exit 2
 fi
+mkdir -p "$app_dir/wrapper"
+mv ./wrapper-dist.tar.gz "$app_dir/wrapper"
+
 
 wallmonitor_url="$versioned_release/wallmonitor.tar.gz"
 if ! wget "$wallmonitor_url"; then
@@ -40,10 +43,11 @@ if ! wget "$wallmonitor_url"; then
   echo $msg >> $log_file
   exit 2
 fi
+mv ./wallmonitor.tar.gz "$app_dir"
+
 
 # Install scripts
 
-mv ./wallmonitor.tar.gz "$app_dir"
 cd "$app_dir"
 tar -xvf ./wallmonitor.tar.gz
 scripts_dir="$app_dir/wallmonitor"
@@ -70,8 +74,6 @@ chmod +x environment.sh
 
 # Install wrapper app
 
-mkdir -p "$app_dir/wrapper"
-mv ./wrapper-dist.tar.gz "$app_dir/wrapper"
 cd "$app_dir/wrapper"
 rm -rf ./dist
 tar -xvf ./wrapper-dist.tar.gz
