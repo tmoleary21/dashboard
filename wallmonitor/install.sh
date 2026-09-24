@@ -70,7 +70,7 @@ export KIOSK_PORT=$KIOSK_PORT
 export KIOSK_URL=$KIOSK_URL
 EOF
 
-chmod +x environment.sh
+chmod +x ./*.sh
 
 # Install wrapper app
 
