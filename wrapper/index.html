@@ -15,13 +15,26 @@
       src="about:blank"
     ></iframe>
 
-    <div id="controls" style="position:absolute;bottom:50px;right:50px;z-index: 1;">
+    <div id="controls" style="position:absolute;bottom:50px;right:50px;z-index: 1; display: flex; flex-direction: row; align-items:end; gap: 10px">
       <button id="back" class="control">
         <i class="fa-solid fa-arrow-left"></i>
       </button>
       <button id="home" class="control">
         <i class="fa-regular fa-house"></i>
       </button>
+
+      <div id="menu-select" class="custom-select-container dark-background">
+        <button id="menu" class="control" aria-expanded="false" aria-controls="menu-options">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div id="menu-options" class="options">
+          <button id="refresh" class="option control">
+            <i class="fa-solid fa-arrow-rotate-right"></i>
+          </button>
+          <!-- <button class="option control">Option 2</button> -->
+        </div>
+      </div>
+      
     </div>
 
     <script type="module" src="/src/main.ts"></script>
@@ -29,13 +42,93 @@
   </body>
   <style>
     .control {
-      width:44px;
-      height:44px;
+      width: var(--control-size, 44px);
+      height: var(--control-size, 44px);
       border-radius: 50%;
       border: none;
       background: linear-gradient(to bottom left, #1e90ff, #8a2be2);
       color: #fff;
       cursor: pointer;
+    }
+
+    .dark-background {
+      /* background: linear-gradient(to bottom left, #002447, #23083b); */
+      background: #002447;
+      border-radius: 22px;
+      padding: 5px 5px 5px 5px;
+      margin: 0 0 -5px 0
+    }
+
+    .custom-select-container {
+      --control-size: 44px;
+      --gap: 10px;
+      --stagger: 60ms;
+      --ease: cubic-bezier(0.25, 1, 0.5, 1);
+      --duration: 0.45s;
+
+      display: inline-flex;
+      flex-direction: column-reverse;
+      /* No gap here: the options wrapper owns its own spacing so it can
+         collapse to nothing without leaving a gap behind. */
+      gap: 0;
+    }
+
+    /* The wrapper is what makes the dark background grow/shrink: its height
+       animates from 0 to the measured content height (set in main.ts). */
+    .options {
+      display: flex;
+      flex-direction: column-reverse;
+      gap: var(--gap);
+      height: 0;
+      margin-bottom: 0;
+      overflow: hidden;
+      pointer-events: none;
+      transition:
+        height var(--duration) var(--ease),
+        margin-bottom var(--duration) var(--ease);
+    }
+
+    .custom-select-container.open .options {
+      margin-bottom: var(--gap);
+      pointer-events: auto;
+    }
+
+    /* Closed: each option sits one slot lower (i.e. on top of the menu
+       button) and shrunk, so opening reads as growing out of the button.
+       Closing runs the stagger in reverse: the farthest option leaves first. */
+    .option {
+      background: gray;
+      flex: 0 0 auto;
+      opacity: 0;
+      transform: translateY(calc(var(--control-size) + var(--gap))) scale(0.4);
+      transition:
+        transform var(--duration) var(--ease),
+        opacity calc(var(--duration) * 0.6) ease;
+      transition-delay: calc((var(--n, 1) - 1 - var(--i, 0)) * var(--stagger));
+    }
+
+    .custom-select-container.open .option {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      transition-delay: calc(var(--i, 0) * var(--stagger));
+    }
+
+    #menu i {
+      display: inline-block;
+      transition: transform var(--duration) var(--ease);
+    }
+
+    .custom-select-container.open #menu i {
+      transform: rotate(90deg);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .options,
+      .option,
+      #menu i {
+        transition-duration: 0.01ms;
+        transition-delay: 0ms;
+      }
     }
   </style>
 </html>
