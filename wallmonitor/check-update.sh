@@ -29,10 +29,12 @@ mkdir -p "$app_dir"
 # Check update
 script_url="$latest_release/install.sh"
 if wget -O new-install.sh "$script_url" >> $log_file; then
-  new_release_tag=$(sed -n '2s/^# Release: //p' ./new-install.sh)
+  new_release_tag=$(sed -n '2s/^export VERSION="\(.*\)"$/\1/p' ./new-install.sh)
   echo $new_release_tag >> $log_file
   this_release_tag="$VERSION"
   echo $this_release_tag >> $log_file
+
+  echo "$this_release_tag =?= $new_release_tag" >> $log_file
 
   if [ "$new_release_tag" != "$this_release_tag" ]; then
     echo "install script updated" >> $log_file

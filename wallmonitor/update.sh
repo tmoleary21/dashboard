@@ -41,7 +41,7 @@ if [ -z "$VERSION" ]; then
     VERSION=old
 fi
 mkdir -p "$app_dir/$VERSION"
-mv ./* "$app_dir/$VERSION"
+mv wallmonitor wrapper "$app_dir/$VERSION"
 
 mv new-install.sh "$script_path"
 chmod +x "$script_path"
