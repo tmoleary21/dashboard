@@ -177,10 +177,44 @@ WantedBy=multi-user.target
 EOF
 
 
+# Setup boot-time update check service
+#
+# This is what makes a reboot pick up a new release: it runs the update check
+# before the wrapper and kiosk units, so they end up starting whichever version
+# is installed once it has finished. The dependency is ordering only - no
+# Requires - so a failed check or a dead network still leaves the display coming
+# up on the version already on disk.
+
+echo "==> Installing wallmonitor-update systemd service..."
+cat > /etc/systemd/system/wallmonitor-update.service <<EOF
+[Unit]
+Description=Wallmonitor boot-time update check
+Wants=network-online.target
+After=network-online.target
+Before=wallmonitor-wrapper.service wallmonitor-kiosk.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=$scripts_dir
+ExecStart=$scripts_dir/update-if-needed.sh
+# An update re-runs install.sh, which downloads dists and runs apt-get, so give
+# it real time - but not unlimited, because the two units above wait on it.
+TimeoutStartSec=600
+# Exit 2 is update-if-needed.sh reporting "already current", which is the normal
+# boot outcome rather than a failure.
+SuccessExitStatus=2
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+
 # Finish
 
 systemctl daemon-reload
 systemctl enable wallmonitor-kiosk.service # No --now. Job of start.sh
+systemctl enable wallmonitor-update.service # No --now. It runs on the next boot
 
 echo ""
 echo "==> Done."
