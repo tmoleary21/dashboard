@@ -1,4 +1,4 @@
-
+#!/usr/bin/env bash
 # Assume an update is necessary (check-update.sh has been run)
 # Run install
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Start process:
 # If not installed, prompt user to run install
 # Check for updates, and run update

@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Check for version difference with github latest release
 
 # RESPONSIBILITY: CHECK FOR UPDATE
