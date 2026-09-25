@@ -51,17 +51,23 @@
       cursor: pointer;
     }
 
+    /* Closed, this collapses to exactly the menu button's circle with a
+       transparent fill, so the button is indistinguishable from the others.
+       Opening grows the padding out from the button on every side at once. */
     .dark-background {
       /* background: linear-gradient(to bottom left, #002447, #23083b); */
-      background: #002447;
-      border-radius: 22px;
-      padding: 5px 5px 5px 5px;
-      margin: 0 0 -5px 0
+      background: transparent;
+      /* Large radius: a perfect circle when closed (44px box), a perfect
+         pill once the padding and options expand it. */
+      border-radius: 999px;
+      padding: 0;
+      margin: 0;
     }
 
     .custom-select-container {
       --control-size: 44px;
       --gap: 10px;
+      --pad: 5px;
       --stagger: 60ms;
       --ease: cubic-bezier(0.25, 1, 0.5, 1);
       --duration: 0.45s;
@@ -71,6 +77,19 @@
       /* No gap here: the options wrapper owns its own spacing so it can
          collapse to nothing without leaving a gap behind. */
       gap: 0;
+      transition:
+        padding var(--duration) var(--ease),
+        margin var(--duration) var(--ease),
+        background-color var(--duration) var(--ease);
+    }
+
+    .custom-select-container.open {
+      background: #002447;
+      padding: var(--pad);
+      /* Negative margins cancel the padding on the three outer sides, so the
+         button itself never moves while the pill grows around it. Padding and
+         margin share one duration, so they stay cancelled mid-animation. */
+      margin: 0 calc(-1 * var(--pad)) calc(-1 * var(--pad));
     }
 
     /* The wrapper is what makes the dark background grow/shrink: its height
@@ -123,6 +142,7 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
+      .custom-select-container,
       .options,
       .option,
       #menu i {
