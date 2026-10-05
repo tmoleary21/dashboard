@@ -13,6 +13,10 @@ def hello():
 def notifications():
     return []
 
+@app.post("/api/notifications/dismiss/{id}")
+def close_notification(id: str):
+    return {}
+
 # Server static files
 # Detect notification files
 # Allow queuing notification files throught API? Not necessary

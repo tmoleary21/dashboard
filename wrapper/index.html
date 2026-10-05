@@ -19,8 +19,11 @@
       
       <div id="notifications" class="notifications-container">
         
-        <div class="notification error">
+        <div id="1234" class="notification error show">
           The wallmonitor was not able to update on the most recent update
+          <button class="close-button">
+            <i class="fa-solid fa-x"></i>
+          </button>
         </div>
 
       </div>
@@ -45,8 +48,8 @@
               <i class="fa-solid fa-arrow-rotate-right"></i>
             </button>
             <button id="bell" class="option control">
-              <i id="bell-icon" class="fa-regular fa-bell"></i>
-              <!-- <i id="bell-full" class="fa-solid fa-bell"></i> -->
+              <i id="bell-full" class="fa-solid fa-bell"></i>
+              <i id="bell-icon" class="fa-regular fa-bell no-display"></i>
               <span id="badge" class="badge"><!-- count filled in by main.ts --></span>
             </button>
           </div>
@@ -61,6 +64,10 @@
   </body>
   <style>
     .controls {
+      /* Shared motion tokens: inherited by the menu and the notifications. */
+      --ease: cubic-bezier(0.25, 1, 0.5, 1);
+      --duration: 0.45s;
+
       position:absolute;
       bottom:50px;
       right:50px;
@@ -106,8 +113,6 @@
       --gap: 10px;
       --pad: 5px;
       --stagger: 60ms;
-      --ease: cubic-bezier(0.25, 1, 0.5, 1);
-      --duration: 0.45s;
 
       display: inline-flex;
       flex-direction: column-reverse;
@@ -198,7 +203,26 @@
     .notification {
       width: 400px;
       border-radius: 22px;
-      padding: 5px 22px;
+      padding: 5px 5px 5px 22px;
+
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+
+      opacity: 0;
+      /* Slides out towards the right edge it is anchored to. */
+      transform: translateX(20px);
+      pointer-events: none;
+      transition:
+        opacity calc(var(--duration) * 0.6) ease,
+        transform var(--duration) var(--ease);
+    }
+
+    .notification.show {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
     }
 
     .error {
@@ -264,6 +288,18 @@
       opacity: 1;
       transform: scale(1);
       transition-delay: calc(var(--duration) * 0.6);
+    }
+
+    .close-button {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      flex: 0;
+    }
+
+    .no-display {
+      display: none
     }
   </style>
 </html>
