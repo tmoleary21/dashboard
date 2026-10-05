@@ -1,5 +1,7 @@
 import "@fortawesome/fontawesome-free/css/all.min.css"
 
+import { setupNotifications } from "./notifications";
+
 const wrappedSite = import.meta.env.VITE_WRAPPED_SITE || "about:blank"
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -49,6 +51,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const refreshButton = document.getElementById("refresh")
     refreshButton?.addEventListener("click", () => location.reload())
+
+    setupNotifications("notifications")
 
     // Collapse after picking something.
     options.forEach((option) => option.addEventListener("click", () => setMenuOpen(false)))

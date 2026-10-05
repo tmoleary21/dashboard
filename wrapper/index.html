@@ -11,28 +11,47 @@
       id="wrapper"
       width="100%"
       height="100%"
-      style="border:nones"
+      style="border:none"
       src="about:blank"
     ></iframe>
 
-    <div id="controls" style="position:absolute;bottom:50px;right:50px;z-index: 1; display: flex; flex-direction: row; align-items:end; gap: 10px">
-      <button id="back" class="control">
-        <i class="fa-solid fa-arrow-left"></i>
-      </button>
-      <button id="home" class="control">
-        <i class="fa-regular fa-house"></i>
-      </button>
-
-      <div id="menu-select" class="custom-select-container dark-background">
-        <button id="menu" class="control" aria-expanded="false" aria-controls="menu-options">
-          <i class="fa-solid fa-bars"></i>
-        </button>
-        <div id="menu-options" class="options">
-          <button id="refresh" class="option control">
-            <i class="fa-solid fa-arrow-rotate-right"></i>
-          </button>
-          <!-- <button class="option control">Option 2</button> -->
+    <div id="controls" class="controls">
+      
+      <div id="notifications" class="notifications-container">
+        
+        <div class="notification error">
+          The wallmonitor was not able to update on the most recent update
         </div>
+
+      </div>
+
+      <div class="controls-row">
+
+
+        <button id="back" class="control">
+          <i class="fa-solid fa-arrow-left"></i>
+        </button>
+        <button id="home" class="control">
+          <i class="fa-regular fa-house"></i>
+        </button>
+
+        <div id="menu-select" class="custom-select-container dark-background">
+          <button id="menu" class="control" aria-expanded="false" aria-controls="menu-options">
+            <i class="fa-solid fa-bars"></i>
+            <span id="menu-badge" class="badge"><!-- count filled in by main.ts --></span>
+          </button>
+          <div id="menu-options" class="options">
+            <button id="refresh" class="option control">
+              <i class="fa-solid fa-arrow-rotate-right"></i>
+            </button>
+            <button id="bell" class="option control">
+              <i id="bell-icon" class="fa-regular fa-bell"></i>
+              <!-- <i id="bell-full" class="fa-solid fa-bell"></i> -->
+              <span id="badge" class="badge"><!-- count filled in by main.ts --></span>
+            </button>
+          </div>
+        </div>
+
       </div>
       
     </div>
@@ -41,6 +60,24 @@
 
   </body>
   <style>
+    .controls {
+      position:absolute;
+      bottom:50px;
+      right:50px;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: end;
+      gap: 10px;
+    }
+
+    .controls-row {
+      display: flex;
+      flex-direction: row;
+      align-items: end;
+      gap: 10px
+    }
+
     .control {
       width: var(--control-size, 44px);
       height: var(--control-size, 44px);
@@ -145,10 +182,88 @@
       .custom-select-container,
       .options,
       .option,
+      .badge,
       #menu i {
         transition-duration: 0.01ms;
         transition-delay: 0ms;
       }
+    }
+
+    .notifications-container {
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 10px;
+    }
+
+    .notification {
+      width: 400px;
+      border-radius: 22px;
+      padding: 5px 22px;
+    }
+
+    .error {
+      background-color: red
+    }
+
+    .warning {
+      background-color: yellow
+    }
+
+    /* The badge lives inside the bell so it inherits the bell's transform and
+       rides the expansion in lockstep. Anchor positioning could not do that:
+       anchor() resolves against the anchor's *layout* box and ignores
+       transforms, so the badge sat at the bell's final resting spot while the
+       bell was still flying up from behind the menu button. */
+    #bell,
+    #menu {
+      position: relative;
+    }
+
+    /* Inset to 0 rather than -5px: that keeps the badge inside the bell's 44px
+       box, so the overflow clip on .options (what hides the flying buttons)
+       never slices a corner off it. On a round button a corner-pinned badge
+       still reads as sitting on the rim. */
+    .badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+
+      width: var(--badge-size, 22px);
+      height: var(--badge-size, 22px);
+      border-radius: 50%;
+      background-color: yellow;
+      color: #000;
+      /* text-align alone left the digit stuck to the top of the circle. */
+      display: grid;
+      place-items: center;
+      font: 600 12px/1 system-ui, sans-serif;
+
+      opacity: 0;
+      transform: scale(0);
+      transition:
+        transform var(--duration) cubic-bezier(0.34, 1.56, 0.64, 1),
+        opacity calc(var(--duration) * 0.4) ease;
+      transition-delay: 0ms;
+    }
+
+    /* Both ends of both properties are now declared, which is what was missing
+       before: nothing ever moved .badge off opacity 0, so no transition ran.
+       --i is inherited from the parent .option's inline style, so the pop lands
+       after whichever slot the bell occupies has arrived. Closing has no delay,
+       so the badge leaves with the button rather than lingering. */
+    .custom-select-container.open .option .badge.show {
+      opacity: 1;
+      transform: scale(1);
+      transition-delay: calc(var(--i, 0) * var(--stagger) + var(--duration) * 0.6);
+    }
+
+    /* The two badges hand off: the menu button carries the count while
+       collapsed, then drops it (base rule, no delay) the moment the menu opens
+       and the bell takes over. Coming back, it waits out the collapse first. */
+    .custom-select-container:not(.open) #menu-badge.show {
+      opacity: 1;
+      transform: scale(1);
+      transition-delay: calc(var(--duration) * 0.6);
     }
   </style>
 </html>
