@@ -1,9 +1,9 @@
+import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from notifications.notifications import collect_notifications, delete_notification
 
 app = FastAPI()
-
-app.mount("/", StaticFiles(directory="web", html=True), name="web")
 
 @app.get("/api/hello")
 def hello():
@@ -11,12 +11,10 @@ def hello():
 
 @app.get("/api/notifications")
 def notifications():
-    return []
+    return collect_notifications(os.getenv("NOTIFICATIONS_DROP_DIR", "notifications"))
 
 @app.post("/api/notifications/dismiss/{id}")
-def close_notification(id: str):
-    return {}
+def dismiss_notification(id: str):
+    delete_notification(id)
 
-# Server static files
-# Detect notification files
-# Allow queuing notification files throught API? Not necessary
+app.mount("/", StaticFiles(directory=os.getenv("WEB_DIR", "web"), html=True), name="web")

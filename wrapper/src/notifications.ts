@@ -17,9 +17,6 @@ export function setupNotifications(notificationsDivId: string) {
     const notificationsDiv = document.getElementById(notificationsDivId)
     if(!notificationsDiv) return
 
-    // The badges are pure presentation of the notification list, so derive them
-    // from the DOM and re-derive whenever showNotifications swaps the children.
-    // Both get the same count; CSS decides which one is visible.
     const badges = document.querySelectorAll<HTMLElement>(".badge")
     const updateBadges = () => {
         const count = notificationsDiv.querySelectorAll(".notification").length
@@ -37,8 +34,6 @@ export function setupNotifications(notificationsDivId: string) {
 
     updateBadges()
     applyVisibility()
-    // Visibility is re-applied on every rebuild as well: showNotifications
-    // replaces the children, and the fresh elements carry no show class.
     new MutationObserver(() => {
         updateBadges()
         applyVisibility()
@@ -54,8 +49,6 @@ export function setupNotifications(notificationsDivId: string) {
         applyVisibility()
     })
 
-    // Dismissing has to drop the notification from currentNotifications too,
-    // not just from the DOM, or the next poll rebuilds it straight back in.
     const dismissNotification = (id: string) => {
         const index = currentNotifications.findIndex((notification) => notification.id === id)
         if(index != -1) currentNotifications.splice(index, 1)
@@ -70,10 +63,6 @@ export function setupNotifications(notificationsDivId: string) {
 }
 
 async function showNotifications(currentNotifications: Notification[], notificationsDiv: HTMLElement, onDismiss: (id: string) => void) {
-    // Mutating the array is what makes this accumulate: reassigning the
-    // parameter only rebound the local, leaving the caller's array empty. The
-    // id check keeps that correct whether /api/notifications returns the whole
-    // current set (as it does today) or only what is new since the last poll.
     for (const notification of await fetchNotifications()) {
         if(!currentNotifications.some((existing) => existing.id === notification.id))
             currentNotifications.push(notification)
@@ -92,8 +81,6 @@ async function fetchNotifications(): Promise<Notification[]> {
         }
         return await response.json() as Notification[]
     } catch (error) {
-        // fetch rejects outright when the server is unreachable; without this
-        // the polling loop would raise an unhandled rejection every 10s.
         console.log(`Unable to reach /api/notifications: ${error}`)
         return []
     }
@@ -121,9 +108,15 @@ function buildNotificationElements(notifications: Notification[], onDismiss: (id
 }
 
 async function fetchDismissNotification(id: string) {
-    const response = await fetch(`/api/notifications/dismiss/${id}`, {method: 'POST'})
-    if(!response.ok) {
-        console.log(`Unable to dismiss notification ${id}. Status: ${response.status}\n${await response.text()}`)
+    const url = `/api/notifications/dismiss/${id}`
+    try {
+        const response = await fetch(url, {method: 'POST'})
+        if(!response.ok) {
+            console.log(`Unable to dismiss notification ${id}. Status: ${response.status}\n${await response.text()}`)
+        }
+    } catch (error) {
+        console.log(`Unable to reach ${url}: ${error}`)
+        return []
     }
 }
 
