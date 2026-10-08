@@ -20,7 +20,28 @@ log_file=./wallmonitor_install.log
 repository_url="https://github.com/tmoleary21/dashboard"
 latest_release="$repository_url/releases/latest/download" # Unused. Could be fallback here, but will definitely be needed in update.sh
 versioned_release="$repository_url/releases/download/$VERSION"
-app_dir=/var/dashboard
+
+# Prompt for config values
+
+if [ -f "./environment.sh" ]; then
+
+    source ./environment.sh
+
+else
+
+    read -p "App directory [/var/dashboard]: " input
+    app_dir=${input:-"/var/dashboard"}
+
+    read -p "Wrapped site URL WRAPPED_SITE [http://localhost:5174]: " input
+    WRAPPED_SITE=${input:-"http://localhost:5174"}
+
+    read -p "Notification drop directory [$app_dir/drop]: " input
+    NOTIFICATIONS_DROP_DIR=${input:-"$app_dir/drop"}
+
+fi
+
+# Set up app_dir
+
 mkdir -p "$app_dir"
 
 # Download wrapper app
@@ -68,6 +89,9 @@ export KIOSK_USER=$KIOSK_USER
 export KIOSK_BIND_URL=$KIOSK_BIND_URL
 export KIOSK_PORT=$KIOSK_PORT
 export KIOSK_URL=$KIOSK_URL
+
+export WRAPPED_SITE=$WRAPPED_SITE
+export NOTIFICATIONS_DROP_DIR=$NOTIFICATIONS_DROP_DIR
 EOF
 
 chmod +x ./*.sh
