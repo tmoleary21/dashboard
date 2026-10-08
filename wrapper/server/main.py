@@ -1,5 +1,7 @@
 import os
+import sys
 from fastapi import FastAPI
+from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from notifications.notifications import collect_notifications, delete_notification
 
@@ -8,6 +10,10 @@ app = FastAPI()
 @app.get("/api/hello")
 def hello():
     return {"message": "Hello World"}
+
+@app.get("/api/wrapped", response_class=PlainTextResponse)
+def get_wrapped_site():
+    return os.getenv("WRAPPED_SITE", "http://localhost:5174")
 
 @app.get("/api/notifications")
 def notifications():

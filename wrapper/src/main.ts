@@ -2,7 +2,7 @@ import "@fortawesome/fontawesome-free/css/all.min.css"
 
 import { setupNotifications } from "./notifications";
 
-const wrappedSite = import.meta.env.VITE_WRAPPED_SITE || "about:blank"
+let wrappedSite = "about:blank"
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const setSrc = (src: string) => {
         if(wrapperIframe) wrapperIframe.src = src
     }
-    setSrc(wrappedSite)
+    fetchWrappedSite().then((wrappedSite) => setSrc(wrappedSite))
 
     const menuButton = document.getElementById("menu")
     const menuSelect = document.getElementById("menu-select")
@@ -58,3 +58,12 @@ document.addEventListener("DOMContentLoaded", () => {
     options.forEach((option) => option.addEventListener("click", () => setMenuOpen(false)))
 
 })
+
+async function fetchWrappedSite() {
+    const response = await fetch("/api/wrapped")
+    if(!response.ok) {
+        return "about:blank"
+    }
+    wrappedSite = await response.text()
+    return wrappedSite
+}
