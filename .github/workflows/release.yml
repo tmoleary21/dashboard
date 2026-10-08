@@ -8,12 +8,11 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-dashboard:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        project: [dashboard, wrapper]
+    defaults:
+      run:
+        working-directory: ./dashboard
 
     steps:
       - name: Checkout
@@ -24,29 +23,68 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+          cache-dependency-path: ./package-lock.json
 
       - name: Install dependencies
-        working-directory: ${{ matrix.project }}
         run: npm ci
 
       - name: Build
-        working-directory: ${{ matrix.project }}
         run: npm run build
 
       - name: Package dist
-        working-directory: ${{ matrix.project }}
         run: |
-          zip -r "../${{ matrix.project }}-dist.zip" dist
-          tar -czf "../${{ matrix.project }}-dist.tar.gz" dist
+          zip -r "./dashboard-dist.zip" dist
+          tar -czf "./dashboard-dist.tar.gz" dist
 
       - name: Upload dist to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload "${{ github.event.release.tag_name }}" \
-            "${{ matrix.project }}-dist.zip" \
-            "${{ matrix.project }}-dist.tar.gz" \
+            "dashboard-dist.zip" \
+            "dashboard-dist.tar.gz" \
+            --clobber
+
+  build-wrapper:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./wrapper
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ./package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Build Server
+        run: |
+          mkdir -p ./server/web
+          mv ./dist/* ./server/web
+
+      - name: Package
+        run: |
+          zip -r "./wrapper.zip" server
+          tar -czf "./wrapper.tar.gz" server
+
+      - name: Upload dist to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            "wrapper.zip" \
+            "wrapper.tar.gz" \
             --clobber
 
   attach-scripts:

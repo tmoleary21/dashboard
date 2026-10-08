@@ -110,9 +110,13 @@ apt-get update
 # - chromium for browser to load the webapp
 # - cage to be the single-window display server
 # - seatd as a dependency to cage
+# - uv for running python server
 
 apt-get install -y cage chromium seatd >> $log_file
 systemctl enable --now seatd
+
+# uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Kiosk user
 
@@ -137,8 +141,8 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=$app_dir/wrapper/dist
-ExecStart=/usr/bin/python3 -m http.server $KIOSK_PORT --bind $KIOSK_BIND_URL
+WorkingDirectory=$app_dir/wrapper
+ExecStart=./start-prod.sh
 Restart=always
 RestartSec=1
 User=$KIOSK_USER
