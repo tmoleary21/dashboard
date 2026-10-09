@@ -49,7 +49,7 @@ mkdir -p "$app_dir"
 wrapper_url="$versioned_release/wrapper.tar.gz"
 if ! wget "$wrapper_url"; then
   msg="Could not retrieve wrapper.tar.gz from $wrapper_url"
-  echo $msg
+  echo $msg >&2
   echo $msg >> $log_file
   exit 2
 fi
@@ -60,7 +60,7 @@ mv ./wrapper.tar.gz "$app_dir/wrapper"
 wallmonitor_url="$versioned_release/wallmonitor.tar.gz"
 if ! wget "$wallmonitor_url"; then
   msg="Could not retrieve wallmonitor scripts from $wallmonitor_url"
-  echo $msg
+  echo $msg >&2
   echo $msg >> $log_file
   exit 2
 fi
@@ -101,6 +101,13 @@ chmod +x ./*.sh
 cd "$app_dir/wrapper"
 rm -rf ./server
 tar -xvf ./wrapper.tar.gz
+
+cd server
+
+cat > .env <<EOF
+WRAPPED_SITE=$WRAPPED_SITE
+NOTIFICATIONS_DROP_DIR=$NOTIFICATIONS_DROP_DIR
+EOF
 
 # Prep dependencies
 
