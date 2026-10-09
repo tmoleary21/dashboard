@@ -46,15 +46,15 @@ mkdir -p "$app_dir"
 
 # Download wrapper app
 
-wrapper_dist_url="$versioned_release/wrapper-dist.tar.gz"
-if ! wget "$wrapper_dist_url"; then
-  msg="Could not retrieve dist from $wrapper_dist_url"
+wrapper_url="$versioned_release/wrapper.tar.gz"
+if ! wget "$wrapper_url"; then
+  msg="Could not retrieve wrapper.tar.gz from $wrapper_url"
   echo $msg
   echo $msg >> $log_file
   exit 2
 fi
 mkdir -p "$app_dir/wrapper"
-mv ./wrapper-dist.tar.gz "$app_dir/wrapper"
+mv ./wrapper.tar.gz "$app_dir/wrapper"
 
 
 wallmonitor_url="$versioned_release/wallmonitor.tar.gz"
@@ -99,8 +99,8 @@ chmod +x ./*.sh
 # Install wrapper app
 
 cd "$app_dir/wrapper"
-rm -rf ./dist
-tar -xvf ./wrapper-dist.tar.gz
+rm -rf ./server
+tar -xvf ./wrapper.tar.gz
 
 # Prep dependencies
 
@@ -141,7 +141,7 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=$app_dir/wrapper
+WorkingDirectory=$app_dir/wrapper/server
 ExecStart=./start-prod.sh
 Restart=always
 RestartSec=1
