@@ -123,7 +123,8 @@ apt-get install -y cage chromium seatd >> $log_file
 systemctl enable --now seatd
 
 # uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# curl -LsSf https://astral.sh/uv/install.sh | sh # Not everything starts with curl
+wget -qO- https://astral.sh/uv/install.sh | sh
 
 # Kiosk user
 
