@@ -21,11 +21,14 @@ repository_url="https://github.com/tmoleary21/dashboard"
 latest_release="$repository_url/releases/latest/download" # Unused. Could be fallback here, but will definitely be needed in update.sh
 versioned_release="$repository_url/releases/download/$VERSION"
 
+echo "Prepared" >> $log_file
+
 # Prompt for config values
 
 if [ -f "./environment.sh" ]; then
 
     source ./environment.sh
+    echo "Environment variables enabled"
 
 else
 
@@ -38,11 +41,14 @@ else
     read -p "Notification drop directory [$app_dir/drop]: " input
     NOTIFICATIONS_DROP_DIR=${input:-"$app_dir/drop"}
 
+    echo "Acquired config values"
+
 fi
 
 # Set up app_dir
 
 mkdir -p "$app_dir"
+echo "Created app directory"  >> $log_file
 
 # Download wrapper app
 
@@ -55,6 +61,7 @@ if ! wget "$wrapper_url"; then
 fi
 mkdir -p "$app_dir/wrapper"
 mv ./wrapper.tar.gz "$app_dir/wrapper"
+echo "Downloaded wrapper.tar.gz"  >> $log_file
 
 
 wallmonitor_url="$versioned_release/wallmonitor.tar.gz"
@@ -65,6 +72,7 @@ if ! wget "$wallmonitor_url"; then
   exit 2
 fi
 mv ./wallmonitor.tar.gz "$app_dir"
+echo "Downloaded wallmonitor.tar.gz"  >> $log_file
 
 
 # Install scripts
@@ -73,6 +81,8 @@ cd "$app_dir"
 tar -xvf ./wallmonitor.tar.gz
 scripts_dir="$app_dir/wallmonitor"
 cd "$scripts_dir"
+
+echo "Installed scripts"  >> $log_file
 
 # Kiosk configuration. Written to environment.sh so start.sh, check-update.sh and
 # update.sh all read the same values instead of redefining them.
@@ -96,6 +106,8 @@ EOF
 
 chmod +x ./*.sh
 
+echo "Generated environment.sh"  >> $log_file
+
 # Install wrapper app
 
 cd "$app_dir/wrapper"
@@ -108,6 +120,8 @@ cat > .env <<EOF
 WRAPPED_SITE=$WRAPPED_SITE
 NOTIFICATIONS_DROP_DIR=$NOTIFICATIONS_DROP_DIR
 EOF
+
+echo "Installed wrapper app"  >> $log_file
 
 # Prep dependencies
 
@@ -126,6 +140,8 @@ systemctl enable --now seatd
 # curl -LsSf https://astral.sh/uv/install.sh | sh # Not everything starts with curl
 wget -qO- https://astral.sh/uv/install.sh | sh
 
+echo "Updated software and installed dependencies"  >> $log_file
+
 # Kiosk user
 
 echo "==> Creating user '${KIOSK_USER}' (if not already present)..."
@@ -138,6 +154,8 @@ fi
 echo "==> Adding '${KIOSK_USER}' to required groups..."
 groupadd -f seat
 usermod -aG video,input,render,seat "$KIOSK_USER"
+
+echo "Added kiosk user"  >> $log_file
 
 # Setup wrapper app service
 
@@ -161,6 +179,8 @@ EOF
 
 systemctl daemon-reload
 systemctl enable wallmonitor-wrapper.service # No --now. Job of start.sh
+
+echo "Set up wrapper app service"  >> $log_file
 
 # Setup kiosk browser service
 #
@@ -212,6 +232,8 @@ RestartSec=2
 WantedBy=multi-user.target
 EOF
 
+echo "Set up kiosk browser service"  >> $log_file
+
 
 # Setup boot-time update check service
 #
@@ -245,6 +267,8 @@ SuccessExitStatus=2
 WantedBy=multi-user.target
 EOF
 
+echo "Set up boot-time update check service"  >> $log_file
+
 
 # Finish
 
@@ -260,6 +284,8 @@ echo ""
 echo "Reboot to test auto start: sudo reboot"
 
 # Start
+
+echo "Finished install. Running start"  >> $log_file
 
 cd "$scripts_dir"
 exec ./start.sh
