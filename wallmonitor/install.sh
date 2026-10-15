@@ -45,6 +45,34 @@ else
 
 fi
 
+# Kiosk user and configuration
+#
+# Created before anything is written into app_dir, and before the dependency
+# install, so that everything installed below can be handed to the user the
+# services actually run as.
+
+KIOSK_USER="${KIOSK_USER:-kiosk}"
+KIOSK_BIND_URL=127.0.0.1
+KIOSK_PORT=8000
+KIOSK_URL="http://${KIOSK_BIND_URL}:${KIOSK_PORT}"
+
+echo "==> Creating user '${KIOSK_USER}' (if not already present)..."
+if id "$KIOSK_USER" &>/dev/null; then
+    echo "    User '${KIOSK_USER}' already exists, skipping creation."
+else
+    adduser --disabled-password --gecos "" "$KIOSK_USER"
+fi
+
+echo "==> Adding '${KIOSK_USER}' to required groups..."
+# video/input/render normally exist already; seat comes with seatd, which is not
+# installed yet at this point, so create whichever are missing first.
+for group in video input render seat; do
+    groupadd -f "$group"
+done
+usermod -aG video,input,render,seat "$KIOSK_USER"
+
+echo "Added kiosk user"  >> $log_file
+
 # Set up app_dir
 
 mkdir -p "$app_dir"
@@ -84,14 +112,8 @@ cd "$scripts_dir"
 
 echo "Installed scripts"  >> $log_file
 
-# Kiosk configuration. Written to environment.sh so start.sh, check-update.sh and
-# update.sh all read the same values instead of redefining them.
-
-KIOSK_USER="kiosk"
-KIOSK_BIND_URL=127.0.0.1
-KIOSK_PORT=8000
-KIOSK_URL="http://${KIOSK_BIND_URL}:${KIOSK_PORT}"
-
+# Kiosk configuration is written to environment.sh so start.sh, check-update.sh
+# and update.sh all read the same values instead of redefining them.
 # Add to this with more environment variables if needed in the future
 cat > environment.sh <<EOF
 export VERSION=$VERSION
@@ -121,6 +143,8 @@ WRAPPED_SITE=$WRAPPED_SITE
 NOTIFICATIONS_DROP_DIR=$NOTIFICATIONS_DROP_DIR
 EOF
 
+chmod +x ./start-prod.sh
+
 echo "Installed wrapper app"  >> $log_file
 
 # Prep dependencies
@@ -136,26 +160,63 @@ apt-get update
 apt-get install -y cage chromium seatd >> $log_file
 systemctl enable --now seatd
 
-# uv
+# uv, installed system-wide rather than into root's home: the wrapper service
+# runs as $KIOSK_USER, so uv has to sit on a PATH that user has. The symlinks
+# into /usr/local/bin are what do that (it is also on systemd's default unit
+# PATH). UV_NO_MODIFY_PATH stops the installer from writing its shell env
+# scripts beside the binaries, where an "env" file would shadow /usr/bin/env.
 # curl -LsSf https://astral.sh/uv/install.sh | sh # Not everything starts with curl
-wget -qO- https://astral.sh/uv/install.sh | sh
+uv_install_dir=/opt/uv
+mkdir -p "$uv_install_dir"
+wget -qO- https://astral.sh/uv/install.sh \
+    | env UV_INSTALL_DIR="$uv_install_dir" UV_NO_MODIFY_PATH=1 sh >> $log_file
+
+if [ ! -x "$uv_install_dir/uv" ]; then
+    msg="uv did not install to $uv_install_dir"
+    echo "$msg" >&2
+    echo "$msg" >> $log_file
+    exit 2
+fi
+
+chmod -R a+rX "$uv_install_dir"
+ln -sf "$uv_install_dir/uv" /usr/local/bin/uv
+ln -sf "$uv_install_dir/uvx" /usr/local/bin/uvx
+export PATH="/usr/local/bin:$PATH"
 
 echo "Updated software and installed dependencies"  >> $log_file
 
-# Kiosk user
+# Hand app_dir to the kiosk user
+#
+# The units below run as $KIOSK_USER, so everything install just wrote - the
+# scripts, the wrapper dist, environment.sh, .env, the drop directory, and the
+# venv uv is about to create - has to be owned by it rather than by root.
 
-echo "==> Creating user '${KIOSK_USER}' (if not already present)..."
-if id "$KIOSK_USER" &>/dev/null; then
-    echo "    User '${KIOSK_USER}' already exists, skipping creation."
-else
-    adduser --disabled-password --gecos "" "$KIOSK_USER"
+echo "==> Giving '${KIOSK_USER}' ownership of $app_dir..."
+mkdir -p "$NOTIFICATIONS_DROP_DIR"
+chown -R "$KIOSK_USER:$KIOSK_USER" "$app_dir"
+chmod -R u+rwX "$app_dir"
+# The drop directory is configurable and may live outside app_dir.
+chown -R "$KIOSK_USER:$KIOSK_USER" "$NOTIFICATIONS_DROP_DIR"
+
+echo "Gave $KIOSK_USER ownership of $app_dir"  >> $log_file
+
+# Pre-build the wrapper's python environment, as the kiosk user
+#
+# Run through runuser on purpose: uv keeps its cache and its managed python
+# interpreters under the invoking user's home, so doing this as root would leave
+# the service user to redo all of it on first start - and fail if the network is
+# not up yet. Non-fatal, because the service retries on start anyway and a
+# display on the old version beats no display.
+
+cd "$app_dir/wrapper/server"
+kiosk_home=$(getent passwd "$KIOSK_USER" | cut -d: -f6)
+if ! runuser -u "$KIOSK_USER" -- env HOME="$kiosk_home" /usr/local/bin/uv sync >> $log_file 2>&1; then
+    msg="Warning: 'uv sync' failed for $KIOSK_USER; wrapper service will retry on start"
+    echo "$msg" >&2
+    echo "$msg" >> $log_file
 fi
 
-echo "==> Adding '${KIOSK_USER}' to required groups..."
-groupadd -f seat
-usermod -aG video,input,render,seat "$KIOSK_USER"
-
-echo "Added kiosk user"  >> $log_file
+echo "Installed wrapper python dependencies for $KIOSK_USER"  >> $log_file
 
 # Setup wrapper app service
 
@@ -168,7 +229,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=$app_dir/wrapper/server
-ExecStart=./start-prod.sh
+ExecStart=$app_dir/wrapper/server/start-prod.sh
 Restart=always
 RestartSec=1
 User=$KIOSK_USER
