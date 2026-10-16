@@ -160,28 +160,24 @@ apt-get update
 apt-get install -y cage chromium seatd >> $log_file
 systemctl enable --now seatd
 
-# uv, installed system-wide rather than into root's home: the wrapper service
-# runs as $KIOSK_USER, so uv has to sit on a PATH that user has. The symlinks
-# into /usr/local/bin are what do that (it is also on systemd's default unit
-# PATH). UV_NO_MODIFY_PATH stops the installer from writing its shell env
-# scripts beside the binaries, where an "env" file would shadow /usr/bin/env.
+# uv, installed as $KIOSK_USER rather than for root or system-wide: that is the
+# user the wrapper service runs as, and uv keeps its cache and its managed
+# python interpreters under the invoking user's home regardless, so this keeps
+# everything uv-related in one place owned by one user. runuser sets HOME to the
+# target user's, which is what sends the install to $kiosk_home/.local/bin.
 # curl -LsSf https://astral.sh/uv/install.sh | sh # Not everything starts with curl
-uv_install_dir=/opt/uv
-mkdir -p "$uv_install_dir"
-wget -qO- https://astral.sh/uv/install.sh \
-    | env UV_INSTALL_DIR="$uv_install_dir" UV_NO_MODIFY_PATH=1 sh >> $log_file
+kiosk_home=$(getent passwd "$KIOSK_USER" | cut -d: -f6)
+uv_bin="$kiosk_home/.local/bin/uv"
 
-if [ ! -x "$uv_install_dir/uv" ]; then
-    msg="uv did not install to $uv_install_dir"
+runuser -u "$KIOSK_USER" -- env UV_INSTALL_DIR="$kiosk_home/.local/bin" \
+    sh -c 'wget -qO- https://astral.sh/uv/install.sh | sh' >> $log_file
+
+if [ ! -x "$uv_bin" ]; then
+    msg="uv did not install to $uv_bin"
     echo "$msg" >&2
     echo "$msg" >> $log_file
     exit 2
 fi
-
-chmod -R a+rX "$uv_install_dir"
-ln -sf "$uv_install_dir/uv" /usr/local/bin/uv
-ln -sf "$uv_install_dir/uvx" /usr/local/bin/uvx
-export PATH="/usr/local/bin:$PATH"
 
 echo "Updated software and installed dependencies"  >> $log_file
 
@@ -202,15 +198,14 @@ echo "Gave $KIOSK_USER ownership of $app_dir"  >> $log_file
 
 # Pre-build the wrapper's python environment, as the kiosk user
 #
-# Run through runuser on purpose: uv keeps its cache and its managed python
-# interpreters under the invoking user's home, so doing this as root would leave
-# the service user to redo all of it on first start - and fail if the network is
-# not up yet. Non-fatal, because the service retries on start anyway and a
-# display on the old version beats no display.
+# Doing it here rather than leaving it to the first start means the venv and the
+# python 3.13 interpreter uv has to fetch are already in place - the service
+# would otherwise do all of it at boot, and fail if the network is not up yet.
+# Non-fatal, because the service retries on start anyway and a display on the
+# old version beats no display.
 
 cd "$app_dir/wrapper/server"
-kiosk_home=$(getent passwd "$KIOSK_USER" | cut -d: -f6)
-if ! runuser -u "$KIOSK_USER" -- env HOME="$kiosk_home" /usr/local/bin/uv sync >> $log_file 2>&1; then
+if ! runuser -u "$KIOSK_USER" -- "$uv_bin" sync >> $log_file 2>&1; then
     msg="Warning: 'uv sync' failed for $KIOSK_USER; wrapper service will retry on start"
     echo "$msg" >&2
     echo "$msg" >> $log_file
@@ -229,6 +224,9 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=$app_dir/wrapper/server
+# start-prod.sh calls uv by name, and uv lives in the kiosk user's home, which
+# is not on systemd's default unit PATH - the rest of this is that default.
+Environment=PATH=$kiosk_home/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=$app_dir/wrapper/server/start-prod.sh
 Restart=always
 RestartSec=1
