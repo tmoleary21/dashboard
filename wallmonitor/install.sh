@@ -6,6 +6,13 @@ export VERSION="dev"
 
 set -euo pipefail
 
+# The version this copy of the script installs. Captured before any config is
+# sourced, because the config records the version that is *already installed* -
+# sourcing it would otherwise overwrite the tag being installed here, and every
+# subsequent boot would compare that stale tag against the latest release, find
+# a difference, and update again forever.
+install_version="$VERSION"
+
 # Check if the script is being run as root
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -15,25 +22,88 @@ fi
 
 # Prepare
 
-log_file=./wallmonitor_install.log
+# Absolute rather than ./, so every script in the set writes to one log instead
+# of scattering copies across whichever directory each was invoked from.
+log_file=/var/log/wallmonitor-install.log
+
+# The config lives outside app_dir on purpose. install.sh has to read it before
+# it knows where app_dir is, and update.sh moves app_dir's contents around
+# before handing over to the new install.sh - which is exactly how an update
+# used to lose the config and fall back to prompting on a tty-less boot.
+config_file=/etc/wallmonitor/environment.sh
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+default_app_dir=/var/dashboard
 
 repository_url="https://github.com/tmoleary21/dashboard"
 latest_release="$repository_url/releases/latest/download" # Unused. Could be fallback here, but will definitely be needed in update.sh
-versioned_release="$repository_url/releases/download/$VERSION"
+versioned_release="$repository_url/releases/download/$install_version"
 
 echo "Prepared" >> $log_file
 
-# Prompt for config values
+# Report a failure where it can actually be seen: the wrapper app displays
+# anything dropped in NOTIFICATIONS_DROP_DIR, and an update runs unattended at
+# boot. install.sh is published as a standalone release asset, so this cannot
+# live in a file shared with the other scripts.
 
-if [ -f "./environment.sh" ]; then
+notify() {
+    local message="$1"
+    local dir="${NOTIFICATIONS_DROP_DIR:-$default_app_dir/drop}"
 
-    source ./environment.sh
-    echo "Environment variables enabled"
+    echo "$message" >&2
+    echo "$message" >> "$log_file" || true
 
-else
+    if mkdir -p "$dir" 2>/dev/null; then
+        echo "$message" > "$dir/$(date +%Y-%m-%d_%H-%M-%S)-install.txt" 2>/dev/null || true
+    fi
+}
 
-    read -p "App directory [/var/dashboard]: " input
-    app_dir=${input:-"/var/dashboard"}
+trap 'notify "install.sh $install_version failed at line $LINENO (exit $?)"' ERR
+
+# Load config
+#
+# Checked in order of authority: the canonical location, then a copy beside this
+# script or in the working directory (a hand-run install from a checkout), then
+# any copy left inside app_dir by an older layout. That last case matters for
+# exactly one boot - the update that moves to $config_file - because update.sh
+# archives wallmonitor/ before running this script, making the archived copy the
+# only config on the box.
+
+find_config() {
+    local candidate
+    for candidate in "$config_file" ./environment.sh "$script_dir/environment.sh"; do
+        if [ -f "$candidate" ]; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+
+    # Newest surviving copy from the pre-$config_file layout. ls -t rather than
+    # find -printf so this does not depend on GNU find; these paths are ours and
+    # contain no spaces, so the word splitting is deliberate.
+    local candidates
+    candidates=$(find "$default_app_dir" -maxdepth 3 -type f -name environment.sh 2>/dev/null)
+    if [ -n "$candidates" ]; then
+        candidate=$(ls -t $candidates 2>/dev/null | head -1)
+        if [ -n "$candidate" ]; then
+            echo "$candidate"
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+if found_config=$(find_config); then
+
+    source "$found_config"
+    echo "Loaded config from $found_config"
+    echo "Loaded config from $found_config" >> $log_file
+
+elif [ -t 0 ]; then
+
+    read -p "App directory [$default_app_dir]: " input
+    app_dir=${input:-"$default_app_dir"}
 
     read -p "Wrapped site URL WRAPPED_SITE [http://localhost:5174]: " input
     WRAPPED_SITE=${input:-"http://localhost:5174"}
@@ -43,7 +113,23 @@ else
 
     echo "Acquired config values"
 
+else
+
+    # Without this the prompts above would read EOF, set -e would abort midway,
+    # and an unattended update would fail with nothing explaining why.
+    notify "install.sh $install_version: no config found at $config_file and no terminal to prompt on. Nothing installed."
+    exit 3
+
 fi
+
+# Put the installing version back after the config overwrote it, so anything
+# inheriting the environment sees the version actually being installed.
+VERSION="$install_version"
+
+# Defaults, so an older or partly written config cannot trip set -u below.
+app_dir="${app_dir:-$default_app_dir}"
+WRAPPED_SITE="${WRAPPED_SITE:-http://localhost:5174}"
+NOTIFICATIONS_DROP_DIR="${NOTIFICATIONS_DROP_DIR:-$app_dir/drop}"
 
 # Kiosk user and configuration
 #
@@ -82,9 +168,7 @@ echo "Created app directory"  >> $log_file
 
 wrapper_url="$versioned_release/wrapper.tar.gz"
 if ! wget "$wrapper_url"; then
-  msg="Could not retrieve wrapper.tar.gz from $wrapper_url"
-  echo $msg >&2
-  echo $msg >> $log_file
+  notify "install.sh $install_version: could not retrieve wrapper.tar.gz from $wrapper_url"
   exit 2
 fi
 mkdir -p "$app_dir/wrapper"
@@ -94,9 +178,7 @@ echo "Downloaded wrapper.tar.gz"  >> $log_file
 
 wallmonitor_url="$versioned_release/wallmonitor.tar.gz"
 if ! wget "$wallmonitor_url"; then
-  msg="Could not retrieve wallmonitor scripts from $wallmonitor_url"
-  echo $msg >&2
-  echo $msg >> $log_file
+  notify "install.sh $install_version: could not retrieve wallmonitor scripts from $wallmonitor_url"
   exit 2
 fi
 mv ./wallmonitor.tar.gz "$app_dir"
@@ -112,11 +194,16 @@ cd "$scripts_dir"
 
 echo "Installed scripts"  >> $log_file
 
-# Kiosk configuration is written to environment.sh so start.sh, check-update.sh
-# and update.sh all read the same values instead of redefining them.
+# Write the config so start.sh, check-update.sh and update.sh all read the same
+# values instead of redefining them. app_dir is included because the scripts
+# that run at boot need it and nothing else tells them where it is - its absence
+# is what used to make the "config found" path die on an unbound variable.
 # Add to this with more environment variables if needed in the future
-cat > environment.sh <<EOF
-export VERSION=$VERSION
+
+write_config() {
+    cat <<EOF
+export app_dir=$app_dir
+export VERSION=$install_version
 export KIOSK_USER=$KIOSK_USER
 export KIOSK_BIND_URL=$KIOSK_BIND_URL
 export KIOSK_PORT=$KIOSK_PORT
@@ -125,10 +212,20 @@ export KIOSK_URL=$KIOSK_URL
 export WRAPPED_SITE=$WRAPPED_SITE
 export NOTIFICATIONS_DROP_DIR=$NOTIFICATIONS_DROP_DIR
 EOF
+}
+
+mkdir -p "$(dirname "$config_file")"
+write_config > "$config_file"
+chmod 644 "$config_file"
+
+# A copy here too, so a still-installed older start.sh or check-update.sh - which
+# source ./environment.sh relative to this directory - keeps working across the
+# one update that introduces $config_file.
+write_config > environment.sh
 
 chmod +x ./*.sh
 
-echo "Generated environment.sh"  >> $log_file
+echo "Wrote config to $config_file"  >> $log_file
 
 # Install wrapper app
 
@@ -149,7 +246,10 @@ echo "Installed wrapper app"  >> $log_file
 
 # Prep dependencies
 
-apt-get update
+# Non-fatal: this also runs unattended at boot during an update, where a slow or
+# half-up network would otherwise abort the whole install. A stale package list
+# is fine - everything needed is normally installed already.
+apt-get update || echo "Warning: apt-get update failed, continuing with the cached package list" >> $log_file
 
 # Install:
 # - chromium for browser to load the webapp
@@ -169,14 +269,18 @@ systemctl enable --now seatd
 kiosk_home=$(getent passwd "$KIOSK_USER" | cut -d: -f6)
 uv_bin="$kiosk_home/.local/bin/uv"
 
-runuser -u "$KIOSK_USER" -- env UV_INSTALL_DIR="$kiosk_home/.local/bin" \
-    sh -c 'wget -qO- https://astral.sh/uv/install.sh | sh' >> $log_file
+# Skipped when uv is already there, which it is on every update: this is a
+# network fetch inside the boot-time update window, and uv updates itself.
+if [ -x "$uv_bin" ]; then
+    echo "uv already installed at $uv_bin"  >> $log_file
+else
+    runuser -u "$KIOSK_USER" -- env UV_INSTALL_DIR="$kiosk_home/.local/bin" \
+        sh -c 'wget -qO- https://astral.sh/uv/install.sh | sh' >> $log_file
 
-if [ ! -x "$uv_bin" ]; then
-    msg="uv did not install to $uv_bin"
-    echo "$msg" >&2
-    echo "$msg" >> $log_file
-    exit 2
+    if [ ! -x "$uv_bin" ]; then
+        notify "install.sh $install_version: uv did not install to $uv_bin"
+        exit 2
+    fi
 fi
 
 echo "Updated software and installed dependencies"  >> $log_file
@@ -315,11 +419,15 @@ Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=$scripts_dir
 ExecStart=$scripts_dir/update-if-needed.sh
+# Explicit, though it is also the default: there is no terminal here. install.sh
+# relies on this to tell an unattended update from a hand-run one.
+StandardInput=null
 # An update re-runs install.sh, which downloads dists and runs apt-get, so give
 # it real time - but not unlimited, because the two units above wait on it.
 TimeoutStartSec=600
 # Exit 2 is update-if-needed.sh reporting "already current", which is the normal
-# boot outcome rather than a failure.
+# boot outcome rather than a failure. Anything else is left to fail so it shows
+# up in systemctl --failed instead of passing for "nothing to do".
 SuccessExitStatus=2
 
 [Install]
@@ -334,6 +442,17 @@ echo "Set up boot-time update check service"  >> $log_file
 systemctl daemon-reload
 systemctl enable wallmonitor-kiosk.service # No --now. Job of start.sh
 systemctl enable wallmonitor-update.service # No --now. It runs on the next boot
+
+# network-online.target is only ordered after something that actually waits for
+# the network, so without one of these enabled the update check can run before
+# DNS resolves and every boot looks like "no update available".
+for wait_unit in NetworkManager-wait-online.service systemd-networkd-wait-online.service; do
+    if systemctl list-unit-files "$wait_unit" &>/dev/null \
+        && [ -n "$(systemctl list-unit-files --no-legend "$wait_unit")" ]; then
+        systemctl enable "$wait_unit" || true
+        echo "Enabled $wait_unit"  >> $log_file
+    fi
+done
 
 echo ""
 echo "==> Done."

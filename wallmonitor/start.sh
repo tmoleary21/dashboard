@@ -19,11 +19,15 @@ fi
 
 # Prepare
 
-if [ -f ./environment.sh ]; then
-    source ./environment.sh
-fi
+log_file=/var/log/wallmonitor-install.log
+config_file=/etc/wallmonitor/environment.sh
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-log_file=./wallmonitor_install.log
+if [ -f "$config_file" ]; then
+    source "$config_file"
+elif [ -f "$script_dir/environment.sh" ]; then
+    source "$script_dir/environment.sh"
+fi
 
 # Check Update
 #
@@ -31,7 +35,7 @@ log_file=./wallmonitor_install.log
 # install.sh and, through it, this script - so this older copy has nothing left
 # to do. Exit 2 means we are current and should go on to start the services.
 
-if ./update-if-needed.sh; then
+if "$script_dir/update-if-needed.sh"; then
     exit 0
 fi
 

@@ -2,8 +2,8 @@
 # Check for an update and install it if there is one.
 # Exit 0: an update was installed, and the new version's install.sh has already
 #         taken over from here (including re-running start.sh).
-# Exit 2: this version is current, or the update could not be fetched - either
-#         way the caller should carry on with the version already installed.
+# Exit 2: this version is current, or the check or the update failed - either way
+#         the caller should carry on with the version already installed.
 
 # RESPONSIBILITY: DECIDE WHETHER TO UPDATE, AND HAND OFF TO update.sh IF SO
 
@@ -18,28 +18,71 @@ fi
 
 # Prepare
 
-if [ -f ./environment.sh ]; then
-    source ./environment.sh
+log_file=/var/log/wallmonitor-install.log
+config_file=/etc/wallmonitor/environment.sh
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ -f "$config_file" ]; then
+    source "$config_file"
+elif [ -f "$script_dir/environment.sh" ]; then
+    source "$script_dir/environment.sh"
 fi
 
-log_file=./wallmonitor_install.log
+NOTIFICATIONS_DROP_DIR="${NOTIFICATIONS_DROP_DIR:-${app_dir:-/var/dashboard}/drop}"
+
+# This runs unattended at boot, so a failure has to end up somewhere a person
+# will see it: the wrapper app displays whatever is dropped in here.
+
+notify() {
+    local message="$1"
+
+    echo "$message" >&2
+    echo "$message" >> "$log_file" || true
+
+    if mkdir -p "$NOTIFICATIONS_DROP_DIR" 2>/dev/null; then
+        echo "$message" > "$NOTIFICATIONS_DROP_DIR/$(date +%Y-%m-%d_%H-%M-%S)-update.txt" 2>/dev/null || true
+    fi
+}
 
 # Check update
 #
-# check-update.sh exits 0 when the latest release differs from this one. update.sh
-# replaces this process: it downloads the new install.sh and execs it, and that
-# ends by running the new version's start.sh. If update.sh cannot fetch the new
-# release it exits 2, which is reported here as "nothing to update" so a failed
-# download degrades to running the current version rather than to no display.
+# 0 = a new release is available, 2 = current, anything else = the check itself
+# could not be completed, which is worth saying out loud rather than treating as
+# "nothing to do".
 
-if ./check-update.sh; then
-    error_output=$({ ./update.sh; } 3>&1 1>&3 2>&1)
-    if [ ! $? -eq 0 ]; then
-        datetime=$(date +%Y-%m-%d_%H-%M-%S)
-        echo "$error_output" > "$NOTIFICATIONS_DROP_DIR/$datetime.txt"
-    fi
-else
-    echo "already at latest release" >> $log_file
-    exit 2 # No update
+check_status=0
+"$script_dir/check-update.sh" || check_status=$?
+
+case "$check_status" in
+    0)
+        ;;
+    2)
+        echo "already at latest release" >> $log_file
+        exit 2 # No update
+        ;;
+    *)
+        notify "Wallmonitor update check failed (exit $check_status). Staying on ${VERSION:-an unknown version}."
+        exit 2 # Carry on with whatever is installed
+        ;;
+esac
+
+# Install the update
+#
+# `if ! var=$(...)` rather than assigning and then inspecting $?: under set -e a
+# failing assignment ends the script outright, so the previous form could never
+# reach its own error handling - which is why a failed update left no trace.
+# update.sh restores the previous version before returning non-zero, so there is
+# something to fall back to here.
+
+if ! update_output=$("$script_dir/update.sh" 2>&1); then
+    notify "Wallmonitor update failed, staying on ${VERSION:-an unknown version}:
+
+$update_output"
+    exit 2 # The previous version is back in place and runnable
 fi
 
+echo "$update_output" >> $log_file
+
+# update.sh ran the new version's install.sh, which ends by running start.sh, so
+# the services are already up on the new version.
+exit 0
