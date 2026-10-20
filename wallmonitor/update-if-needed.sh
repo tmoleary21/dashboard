@@ -18,11 +18,34 @@ fi
 
 # Prepare
 
-if [ -f ./environment.sh ]; then
-    source ./environment.sh
+notify() {
+    local message="$1"
+
+    echo "$message" >&2
+    echo "$message" >> "$log_file" || true
+
+    if [[ ! -n "$NOTIFICATIONS_DROP_DIR" ]]; then
+        msg="Could not create notification. NOTIFICATIONS_DROP_DIR empty"
+        echo "$msg" >&2
+        echo "$msg" >> "$log_file" || true
+        return
+    fi
+
+    local dir="${NOTIFICATIONS_DROP_DIR}"
+
+    if mkdir -p "$dir" 2>/dev/null; then
+        echo "$message" >> "$dir/note_$(date +"%Y-%m-%d_%H-%M-%S").txt" 2>/dev/null || true
+    fi
+}
+
+if [ -f "/etc/dashboard/environment.sh" ]; then
+    this_version="${VERSION}"
+    source /etc/dashboard/environment.sh
+    echo "Environment variables enabled"
+    export VERSION=${this_version}
 fi
 
-log_file=./wallmonitor_install.log
+export log_file=${log_file:-"${PWD}/wallmonitor_install.log"}
 
 # Check update
 #

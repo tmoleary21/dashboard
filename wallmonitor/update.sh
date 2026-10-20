@@ -15,11 +15,14 @@ fi
 
 # Prepare
 
-if [ -f ./environment.sh ]; then
-    source ./environment.sh
+if [ -f "/etc/dashboard/environment.sh" ]; then
+    this_version="${VERSION}"
+    source /etc/dashboard/environment.sh
+    echo "Environment variables enabled"
+    export VERSION=${this_version}
 fi
 
-log_file=./wallmonitor_install.log
+export log_file=${log_file:-"${PWD}/wallmonitor_install.log"}
 
 repository_url="https://github.com/tmoleary21/dashboard"
 latest_release="$repository_url/releases/latest/download"

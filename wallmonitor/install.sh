@@ -1,10 +1,13 @@
-#!/usr/bin/env bash
+#!/bin/bash
 export VERSION="dev"
+export VERSION="v0.0.28-alpha"
 # ^ Github action release.yml replaces the line above with 'export VERSION="<tag>"'
 
 # RESPONSIBILITY: INSTALL ONLY THIS VERSION
 
+# STRICT MODE
 set -euo pipefail
+IFS=$'\n\t'
 
 # Check if the script is being run as root
 
@@ -15,55 +18,55 @@ fi
 
 # Prepare
 
-log_file=./wallmonitor_install.log
-
-repository_url="https://github.com/tmoleary21/dashboard"
-latest_release="$repository_url/releases/latest/download" # Unused. Could be fallback here, but will definitely be needed in update.sh
-versioned_release="$repository_url/releases/download/$VERSION"
-
+export log_file="${PWD}/wallmonitor_install.log"
 echo "Prepared" >> $log_file
 
-# Prompt for config values
+# Initialize config
 
-if [ -f "./environment.sh" ]; then
+usage() {
+    echo "Usage: $0 [-h] [-v] [-f filename]"
+    echo "  -w             Show this help message"
+    exit 1
+}
 
-    source ./environment.sh
+if [ -f "/etc/dashboard/environment.sh" ]; then
+    this_version="${VERSION}"
+    source /etc/dashboard/environment.sh
     echo "Environment variables enabled"
-
-else
-
-    read -p "App directory [/var/dashboard]: " input
-    app_dir=${input:-"/var/dashboard"}
-
-    read -p "Wrapped site URL WRAPPED_SITE [http://localhost:5174]: " input
-    WRAPPED_SITE=${input:-"http://localhost:5174"}
-
-    read -p "Notification drop directory [$app_dir/drop]: " input
-    NOTIFICATIONS_DROP_DIR=${input:-"$app_dir/drop"}
-
-    echo "Acquired config values"
-
+    export VERSION=${this_version}
 fi
 
-# Set up app_dir
+while getopts "hdw:" variable; do
+    case "${variable}" in
+        h)
+            usage
+            ;;
+        d)
+            DRY="true"
+            ;;
+        w)
+            APP_DIR="${OPTARG}"
+            ;;
+        :)
+            # Executed if a flag requiring an argument is left blank
+            echo "Error: Option -${OPTARG} requires an argument." >&2
+            usage
+            ;;
+        \?)
+            # Executed if an unknown/invalid flag is passed
+            echo "Error: Invalid option -${OPTARG}" >&2
+            usage
+            ;;
+    esac
+done
 
-mkdir -p "$app_dir"
-echo "Created app directory"  >> $log_file
+DRY=${DRY:-"false"}
+APP_DIR=${APP_DIR:-"/var/dashboard"}
+mkdir -p "${APP_DIR}"
 
-# Download wrapper app
-
-wrapper_url="$versioned_release/wrapper.tar.gz"
-if ! wget "$wrapper_url"; then
-  msg="Could not retrieve wrapper.tar.gz from $wrapper_url"
-  echo $msg >&2
-  echo $msg >> $log_file
-  exit 2
-fi
-mkdir -p "$app_dir/wrapper"
-mv ./wrapper.tar.gz "$app_dir/wrapper"
-echo "Downloaded wrapper.tar.gz"  >> $log_file
-
-
+# Download wallmonitor scripts
+repository_url="https://github.com/tmoleary21/dashboard"
+versioned_release="$repository_url/releases/download/$VERSION"
 wallmonitor_url="$versioned_release/wallmonitor.tar.gz"
 if ! wget "$wallmonitor_url"; then
   msg="Could not retrieve wallmonitor scripts from $wallmonitor_url"
@@ -71,169 +74,22 @@ if ! wget "$wallmonitor_url"; then
   echo $msg >> $log_file
   exit 2
 fi
-mv ./wallmonitor.tar.gz "$app_dir"
+mv ./wallmonitor.tar.gz "$APP_DIR"
 echo "Downloaded wallmonitor.tar.gz"  >> $log_file
 
 
 # Install scripts
-
-cd "$app_dir"
+cd "$APP_DIR"
 tar -xvf ./wallmonitor.tar.gz
-scripts_dir="$app_dir/wallmonitor"
+scripts_dir="$APP_DIR/wallmonitor"
 cd "$scripts_dir"
-
 echo "Installed scripts"  >> $log_file
-
-# Kiosk configuration. Written to environment.sh so start.sh, check-update.sh and
-# update.sh all read the same values instead of redefining them.
-
-KIOSK_USER="kiosk"
-KIOSK_BIND_URL=127.0.0.1
-KIOSK_PORT=8000
-KIOSK_URL="http://${KIOSK_BIND_URL}:${KIOSK_PORT}"
-
-# Add to this with more environment variables if needed in the future
-cat > environment.sh <<EOF
-export VERSION=$VERSION
-export KIOSK_USER=$KIOSK_USER
-export KIOSK_BIND_URL=$KIOSK_BIND_URL
-export KIOSK_PORT=$KIOSK_PORT
-export KIOSK_URL=$KIOSK_URL
-
-export WRAPPED_SITE=$WRAPPED_SITE
-export NOTIFICATIONS_DROP_DIR=$NOTIFICATIONS_DROP_DIR
-EOF
-
 chmod +x ./*.sh
 
-echo "Generated environment.sh"  >> $log_file
-
-# Install wrapper app
-
-cd "$app_dir/wrapper"
-rm -rf ./server
-tar -xvf ./wrapper.tar.gz
-
-cd server
-
-cat > .env <<EOF
-WRAPPED_SITE=$WRAPPED_SITE
-NOTIFICATIONS_DROP_DIR=$NOTIFICATIONS_DROP_DIR
-EOF
-
-echo "Installed wrapper app"  >> $log_file
-
-# Prep dependencies
-
-apt-get update
-
-# Install:
-# - chromium for browser to load the webapp
-# - cage to be the single-window display server
-# - seatd as a dependency to cage
-# - uv for running python server
-
-apt-get install -y cage chromium seatd >> $log_file
-systemctl enable --now seatd
-
-# uv
-# curl -LsSf https://astral.sh/uv/install.sh | sh # Not everything starts with curl
-wget -qO- https://astral.sh/uv/install.sh | sh
-
-echo "Updated software and installed dependencies"  >> $log_file
-
-# Kiosk user
-
-echo "==> Creating user '${KIOSK_USER}' (if not already present)..."
-if id "$KIOSK_USER" &>/dev/null; then
-    echo "    User '${KIOSK_USER}' already exists, skipping creation."
-else
-    adduser --disabled-password --gecos "" "$KIOSK_USER"
+if [[ $DRY != "false" ]]; then
+    echo "SKIPPED FOR DRY RUN: creation of update service and install-app.sh in ${scripts_dir}"
+    exit 0
 fi
-
-echo "==> Adding '${KIOSK_USER}' to required groups..."
-groupadd -f seat
-usermod -aG video,input,render,seat "$KIOSK_USER"
-
-echo "Added kiosk user"  >> $log_file
-
-# Setup wrapper app service
-
-echo "==> Installing wallmonitor-wrapper systemd service..."
-cat > /etc/systemd/system/wallmonitor-wrapper.service <<EOF
-[Unit]
-Description=Wallmonitor wrapper static file server
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=$app_dir/wrapper/server
-ExecStart=./start-prod.sh
-Restart=always
-RestartSec=1
-User=$KIOSK_USER
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-systemctl daemon-reload
-systemctl enable wallmonitor-wrapper.service # No --now. Job of start.sh
-
-echo "Set up wrapper app service"  >> $log_file
-
-# Setup kiosk browser service
-#
-# The unit owns tty1 directly, so no autologin/.bash_profile chain is needed.
-# PAMName=login makes pam_systemd open a real login session for the kiosk user,
-# which is what gives cage its seat and XDG_RUNTIME_DIR.
-
-echo "==> Installing wallmonitor-kiosk systemd service..."
-cat > /etc/systemd/system/wallmonitor-kiosk.service <<EOF
-[Unit]
-Description=Wallmonitor kiosk browser
-Wants=wallmonitor-wrapper.service
-After=wallmonitor-wrapper.service seatd.service systemd-user-sessions.service
-Conflicts=getty@tty1.service
-After=getty@tty1.service
-# A wall display should retry forever rather than give up after the default
-# limit of 5 starts in 10s.
-StartLimitIntervalSec=0
-
-[Service]
-Type=simple
-User=$KIOSK_USER
-
-# Stuff I don't understand yet. But provides a TTY and a seat for cage
-PAMName=login
-TTYPath=/dev/tty1
-TTYReset=yes
-TTYVHangup=yes
-TTYVTDisallocate=yes
-StandardInput=tty-fail
-StandardOutput=journal
-StandardError=journal
-UtmpIdentifier=tty1
-UtmpMode=user
-
-# wallmonitor-wrapper is Type=simple, so systemd considers it started as soon as
-# python3 execs - before the socket is listening. Wait for a real response so
-# chromium doesn't load an error page and sit on it.
-ExecStartPre=/bin/sh -c 'for i in \$(seq 1 60); do wget -q -O /dev/null "$KIOSK_URL" && exit 0; sleep 0.5; done; exit 1'
-ExecStart=/usr/bin/cage -s -d -- /usr/bin/chromium --kiosk --app=$KIOSK_URL \\
-    --enable-features=UseOzonePlatform --ozone-platform=wayland \\
-    --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
-    --disable-features=TranslateUI --no-first-run \\
-    --check-for-update-interval=31536000
-Restart=always
-RestartSec=2
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-echo "Set up kiosk browser service"  >> $log_file
-
 
 # Setup boot-time update check service
 #
@@ -273,20 +129,11 @@ echo "Set up boot-time update check service"  >> $log_file
 # Finish
 
 systemctl daemon-reload
-systemctl enable wallmonitor-kiosk.service # No --now. Job of start.sh
 systemctl enable wallmonitor-update.service # No --now. It runs on the next boot
 
-echo ""
-echo "==> Done."
-echo "    Kiosk user:  ${KIOSK_USER}"
-echo "    Kiosk URL:   ${KIOSK_URL}"
-echo ""
-echo "Reboot to test auto start: sudo reboot"
 
-# Start
+export APP_DIR="${APP_DIR}"
 
-echo "Finished install. Running start"  >> $log_file
-
-cd "$scripts_dir"
-exec ./start.sh
-
+echo "Running install-app.sh in ${scripts_dir}"   
+cd "${scripts_dir}"
+exec ./install-app.sh
