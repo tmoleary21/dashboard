@@ -56,13 +56,13 @@ export log_file=${log_file:-"${PWD}/wallmonitor_install.log"}
 # download degrades to running the current version rather than to no display.
 
 if ./check-update.sh; then
-    error_output=$({ ./update.sh; } 3>&1 1>&3 2>&1)
-    if [ ! $? -eq 0 ]; then
-        datetime=$(date +%Y-%m-%d_%H-%M-%S)
-        echo "$error_output" > "$NOTIFICATIONS_DROP_DIR/$datetime.txt"
+    update_status=0
+    error_output=$({ ./update.sh; } 3>&1 1>&3 2>&1) || update_status=$?
+    if [ ! $update_status -eq 0 ]; then
+        notify "$error_output"
     fi
 else
-    echo "already at latest release" >> $log_file
+    echo "already at latest release" >> "$log_file"
     exit 2 # No update
 fi
 
