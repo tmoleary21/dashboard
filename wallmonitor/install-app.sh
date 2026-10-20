@@ -99,10 +99,6 @@ apt-get update
 apt-get install -y cage chromium seatd >> "$log_file"
 systemctl enable --now seatd
 
-# uv
-# curl -LsSf https://astral.sh/uv/install.sh | sh # Not everything starts with curl
-wget -qO- https://astral.sh/uv/install.sh | sh
-
 echo "Updated software and installed dependencies"  >> "$log_file"
 
 # Kiosk user
@@ -118,6 +114,10 @@ groupadd -f seat
 usermod -aG video,input,render,seat "$KIOSK_USER"
 
 echo "Added kiosk user"  >> "$log_file"
+
+# Install UV for kiosk user
+uv_install='wget -qO- https://astral.sh/uv/install.sh | sh'
+runuser -l "$KIOSK_USER" -c "$uv_install"
 
 # Setup wrapper app service
 
