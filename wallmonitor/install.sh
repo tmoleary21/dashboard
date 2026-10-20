@@ -1,6 +1,5 @@
 #!/bin/bash
 export VERSION="dev"
-export VERSION="v0.0.28-alpha"
 # ^ Github action release.yml replaces the line above with 'export VERSION="<tag>"'
 
 # RESPONSIBILITY: INSTALL ONLY THIS VERSION

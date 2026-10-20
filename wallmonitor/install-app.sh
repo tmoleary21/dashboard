@@ -58,6 +58,7 @@ cd "$APP_DIR/wrapper"
 rm -rf ./server
 tar -xvf ./wrapper.tar.gz
 cd server
+chmod +x ./start-prod.sh
 
 cat > .env <<EOF
 WRAPPED_SITE=$WRAPPED_SITE
