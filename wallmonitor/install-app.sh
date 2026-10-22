@@ -133,7 +133,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=$APP_DIR/wrapper/server
-ExecStart=$APP_DIR/wrapper/server/start-prod.sh
+ExecStart=/bin/bash -l -c '$APP_DIR/wrapper/server/start-prod.sh'
 Restart=always
 RestartSec=1
 User=$KIOSK_USER
