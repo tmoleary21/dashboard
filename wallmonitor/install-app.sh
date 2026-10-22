@@ -20,6 +20,9 @@ if [ -f "/etc/dashboard/environment.sh" ]; then
     echo "Environment variables enabled"
     export VERSION=${this_version}
 else
+
+    APP_DIR=${APP_DIR:-"/var/dashboard"}
+
     read -p "Wrapped site URL WRAPPED_SITE [http://localhost:5174]: " input
     WRAPPED_SITE=${input:-"http://localhost:5174"}
 
