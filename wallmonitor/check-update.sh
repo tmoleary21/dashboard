@@ -15,10 +15,8 @@ fi
 # Prepare
 
 if [ -f "/etc/dashboard/environment.sh" ]; then
-    this_version="${VERSION}"
     source /etc/dashboard/environment.sh
     echo "Environment variables enabled"
-    export VERSION=${this_version}
 fi
 
 export log_file=${log_file:-"${PWD}/wallmonitor_install.log"}
