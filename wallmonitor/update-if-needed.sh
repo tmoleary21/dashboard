@@ -46,10 +46,16 @@ fi
 export log_file=${log_file:-"${PWD}/wallmonitor_install.log"}
 
 i=1
-until host github.com > /dev/null 2>&1 || [ "$i" -gt 5 ]; do
-  echo "Waiting for DNS... (try $i)"
+until host github.com > /dev/null 2>&1; do
+  echo "Waiting for DNS... (tried $i)"
   sleep 2
   ((++i))
+
+  if [ $i -gt 5 ]; then
+    notify "Could not access github.com for update"
+    exit 3 # No DNS access after 5 tries
+  fi
+
 done
 echo "DNS is up!"
 
