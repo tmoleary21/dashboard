@@ -45,6 +45,15 @@ fi
 
 export log_file=${log_file:-"${PWD}/wallmonitor_install.log"}
 
+i=1
+until host github.com > /dev/null 2>&1 || [ "$i" -gt 5 ]; do
+  echo "Waiting for DNS... (try $i)"
+  sleep 2
+  ((++i))
+done
+echo "DNS is up!"
+
+
 # Check update
 #
 # check-update.sh exits 0 when the latest release differs from this one. update.sh
