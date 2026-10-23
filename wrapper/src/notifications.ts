@@ -11,7 +11,7 @@ export function setupNotifications(notificationsDivId: string) {
     const currentNotifications: Notification[] = [
         {
             id: "sample",
-            text: "The wallmonitor was not able to update on the most recent update"
+            text: "Sample"
         }
     ]
     const notificationsDiv = document.getElementById(notificationsDivId)
