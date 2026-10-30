@@ -23,9 +23,6 @@ export log_file=${log_file:-"${PWD}/wallmonitor_install.log"}
 
 repository_url="https://github.com/tmoleary21/dashboard"
 latest_release="$repository_url/releases/latest/download"
-app_dir=/var/dashboard
-mkdir -p "$app_dir"
-
 
 # Check update
 script_url="$latest_release/install.sh"

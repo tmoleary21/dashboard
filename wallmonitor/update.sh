@@ -24,7 +24,7 @@ export log_file=${log_file:-"${PWD}/wallmonitor_install.log"}
 
 repository_url="https://github.com/tmoleary21/dashboard"
 latest_release="$repository_url/releases/latest/download"
-app_dir=/var/dashboard
+# APP_DIR=/var/dashboard
 
 # Use new install script
 
@@ -34,16 +34,17 @@ if [ ! -f "new-install.sh" ]; then
         exit 2
     fi
 fi
-mv new-install.sh "$app_dir"
-cd "$app_dir"
-script_path="./install.sh"
+mv new-install.sh "$APP_DIR"
+cd "$APP_DIR"
 
 if [ -z "$VERSION" ]; then
     VERSION=old
 fi
-mkdir -p "$app_dir/$VERSION"
-mv wallmonitor wrapper "$app_dir/$VERSION"
+mkdir -p "$APP_DIR/$VERSION"
+mv wallmonitor wrapper "$APP_DIR/$VERSION"
+rm -rf ./*.tar.gz
 
+script_path="./install.sh"
 mv new-install.sh "$script_path"
 chmod +x "$script_path"
 exec ./install.sh
