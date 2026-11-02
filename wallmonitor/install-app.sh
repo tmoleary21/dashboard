@@ -45,16 +45,18 @@ echo "Created config directory"  >> "$log_file"
 repository_url="https://github.com/tmoleary21/dashboard"
 # latest_release="$repository_url/releases/latest/download" # Unused. Could be fallback here, but will definitely be needed in update.sh
 versioned_release="$repository_url/releases/download/$VERSION"
-wrapper_url="$versioned_release/wrapper.tar.gz"
-if ! wget "$wrapper_url"; then
-    msg="Could not retrieve wrapper.tar.gz from $wrapper_url"
-    echo "$msg" >&2
-    echo "$msg" >> "$log_file"
-    exit 2
+if [ ! -f "$APP_DIR/wrapper/wrapper.tar.gz" ]; then
+    wrapper_url="$versioned_release/wrapper.tar.gz"
+    if ! wget "$wrapper_url"; then
+        msg="Could not retrieve wrapper.tar.gz from $wrapper_url"
+        echo "$msg" >&2
+        echo "$msg" >> "$log_file"
+        exit 2
+    fi
+    mkdir -p "$APP_DIR/wrapper"
+    mv ./wrapper.tar.gz "$APP_DIR/wrapper"
+    echo "Downloaded wrapper.tar.gz"  >> "$log_file"
 fi
-mkdir -p "$APP_DIR/wrapper"
-mv ./wrapper.tar.gz "$APP_DIR/wrapper"
-echo "Downloaded wrapper.tar.gz"  >> "$log_file"
 
 # Install wrapper app
 cd "$APP_DIR/wrapper"
@@ -81,6 +83,7 @@ KIOSK_URL="http://${KIOSK_BIND_URL}:${KIOSK_PORT}"
 # Add to this with more environment variables if needed in the future
 cat > "${config_dir}/environment.sh" <<EOF
 export VERSION=$VERSION
+export APP_DIR=$APP_DIR
 export KIOSK_USER=$KIOSK_USER
 export KIOSK_BIND_URL=$KIOSK_BIND_URL
 export KIOSK_PORT=$KIOSK_PORT

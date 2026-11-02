@@ -21,6 +21,7 @@ if [ -f "/etc/dashboard/environment.sh" ]; then
 fi
 
 VERSION=${VERSION:-}
+APP_DIR=${APP_DIR:-}
 
 if [ -z "$APP_DIR" ]; then
     echo "APP_DIR variable empty"
