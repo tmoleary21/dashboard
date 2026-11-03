@@ -26,16 +26,6 @@ fi
 
 export log_file=${log_file:-"${PWD}/wallmonitor_install.log"}
 
-# Check Update
-#
-# Exit 0 means an update was installed, and that chain has already re-run
-# install.sh and, through it, this script - so this older copy has nothing left
-# to do. Exit 2 means we are current and should go on to start the services.
-
-if ./update-if-needed.sh; then
-    exit 0
-fi
-
 # Ensure services are running. All three units are installed and enabled by
 # install.sh, so on a normal boot systemd has already brought them up and this is
 # a no-op. The kiosk unit waits for the wrapper to actually answer before
