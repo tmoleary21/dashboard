@@ -68,8 +68,12 @@ if [ ! $install_status -eq 0 ]; then
     
     cp ./wallmonitor/install.sh ./install.sh
     chmod +x ./install.sh
+
+    rollback_status=0
     ./install.sh || rollback_status=$?
     
-    rm -rf "./$OLD_DIR"
-    exit $install_status
+    if [ "$rollback_status" -eq 0 ]; then
+        rm -rf "./$OLD_DIR" # Don't remove backup if failed to reinstall
+    fi
+    exit "$install_status"
 fi
