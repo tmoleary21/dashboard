@@ -45,25 +45,24 @@ echo "Created config directory"  >> "$log_file"
 repository_url="https://github.com/tmoleary21/dashboard"
 # latest_release="$repository_url/releases/latest/download" # Unused. Could be fallback here, but will definitely be needed in update.sh
 versioned_release="$repository_url/releases/download/$VERSION"
+wrapper_url="$versioned_release/wrapper.tar.gz"
+if ! wget "$wrapper_url"; then
+    msg="Could not retrieve wrapper.tar.gz from $wrapper_url"
+    echo "$msg" >&2
+    echo "$msg" >> "$log_file"
+    exit 2
+fi
+echo "Downloaded wrapper.tar.gz"  >> "$log_file"
+mkdir -p "$APP_DIR/wrapper"
 if [ ! -f "$APP_DIR/wrapper/wrapper.tar.gz" ]; then
-    wrapper_url="$versioned_release/wrapper.tar.gz"
-    if ! wget "$wrapper_url"; then
-        msg="Could not retrieve wrapper.tar.gz from $wrapper_url"
-        echo "$msg" >&2
-        echo "$msg" >> "$log_file"
-        exit 2
-    fi
-    echo "Downloaded wrapper.tar.gz"  >> "$log_file"
-    mkdir -p "$APP_DIR/wrapper"
-    if [ ! -f "$APP_DIR/wrapper/wrapper.tar.gz" ]; then
-        mv ./wrapper.tar.gz "$APP_DIR/wrapper"
-    fi
+    mv ./wrapper.tar.gz "$APP_DIR/wrapper"
 fi
 
 # Install wrapper app
 cd "$APP_DIR/wrapper"
 rm -rf ./server
 tar -xvf ./wrapper.tar.gz
+rm -f ./wrapper.tar.gz
 cd server
 chmod +x ./start-prod.sh
 

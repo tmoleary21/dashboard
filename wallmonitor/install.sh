@@ -67,25 +67,24 @@ mkdir -p "${APP_DIR}"
 repository_url="https://github.com/tmoleary21/dashboard"
 versioned_release="$repository_url/releases/download/$VERSION"
 
+echo "Downloading wallmonitor.tar.gz"
+wallmonitor_url="$versioned_release/wallmonitor.tar.gz"
+if ! wget "$wallmonitor_url"; then
+    msg="Could not retrieve wallmonitor scripts from $wallmonitor_url"
+    echo $msg >&2
+    echo $msg >> $log_file
+    exit 2
+fi
+echo "Downloaded wallmonitor.tar.gz"
+echo "Downloaded wallmonitor.tar.gz" >> $log_file
 if [ ! -f "$APP_DIR/wallmonitor.tar.gz" ]; then
-    echo "Downloading wallmonitor.tar.gz"
-    wallmonitor_url="$versioned_release/wallmonitor.tar.gz"
-    if ! wget "$wallmonitor_url"; then
-        msg="Could not retrieve wallmonitor scripts from $wallmonitor_url"
-        echo $msg >&2
-        echo $msg >> $log_file
-        exit 2
-    fi
-    echo "Downloaded wallmonitor.tar.gz"
-    echo "Downloaded wallmonitor.tar.gz" >> $log_file
-    if [ ! -f "$APP_DIR/wallmonitor.tar.gz" ]; then
-        mv ./wallmonitor.tar.gz "$APP_DIR"
-    fi
+    mv ./wallmonitor.tar.gz "$APP_DIR"
 fi
 
 # Install scripts
 cd "$APP_DIR"
 tar -xvf ./wallmonitor.tar.gz
+rm -f ./wallmonitor.tar.gz
 scripts_dir="$APP_DIR/wallmonitor"
 cd "$scripts_dir"
 echo "Installed scripts"  >> $log_file
