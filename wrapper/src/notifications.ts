@@ -8,12 +8,7 @@ interface Notification {
 
 export function setupNotifications(notificationsDivId: string) {
 
-    const currentNotifications: Notification[] = [
-        {
-            id: "sample",
-            text: "If this shows, update worked!"
-        }
-    ]
+    const currentNotifications: Notification[] = []
     const notificationsDiv = document.getElementById(notificationsDivId)
     if(!notificationsDiv) return
 
