@@ -57,12 +57,26 @@ document.addEventListener("DOMContentLoaded", () => {
     // Collapse after picking something.
     options.forEach((option) => option.addEventListener("click", () => setMenuOpen(false)))
 
+    const versionBoxes = document.querySelectorAll<HTMLElement>(".version-box")
+    fetchVersion().then((version) => 
+        versionBoxes.forEach((versionBox) => versionBox.textContent = version)
+    )
+
 })
 
 async function fetchWrappedSite() {
     const response = await fetch("/api/wrapped")
     if(!response.ok) {
         return "about:blank"
+    }
+    wrappedSite = await response.text()
+    return wrappedSite
+}
+
+async function fetchVersion() {
+    const response = await fetch("/api/version")
+    if(!response.ok) {
+        return "dev"
     }
     wrappedSite = await response.text()
     return wrappedSite

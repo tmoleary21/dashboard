@@ -7,6 +7,7 @@ from notifications.notifications import collect_notifications, delete_notificati
 
 def load_env():
     variables = { # Variable name to default value
+        "VERSION": "dev",
         "WRAPPED_SITE": "http://localhost:5174",
         "NOTIFICATIONS_DROP_DIR": "notifications",
         "WEB_DIR": "web"
@@ -33,6 +34,10 @@ def hello():
 @app.get("/api/wrapped", response_class=PlainTextResponse)
 def get_wrapped_site():
     return env["WRAPPED_SITE"]
+
+@app.get("/api/version", response_class=PlainTextResponse)
+def get_version():
+    return env["VERSION"]
 
 @app.get("/api/notifications")
 def notifications():
