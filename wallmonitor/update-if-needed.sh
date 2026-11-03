@@ -76,6 +76,7 @@ if ./check-update.sh; then
     error_output=$({ ./update.sh; } 3>&1 1>&3 2>&1) || update_status=$?
     if [ ! $update_status -eq 0 ]; then
         notify "$error_output"
+        exit $update_status
     fi
 else
     echo "already at latest release" >> "$log_file"
