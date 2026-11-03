@@ -49,7 +49,7 @@ export log_file=${log_file:-"${PWD}/wallmonitor_install.log"}
 # Wait for network availability
 
 i=1
-until host github.com > /dev/null 2>&1 && ping -c 1 -W 1 github.com > /dev/null 2>&1; do
+until wget --spider --timeout=5 --tries=1 https://github.com > /dev/null 2>&1; do
   echo "Waiting for DNS and Network... (tried $i)"
   sleep 2
   ((++i))
