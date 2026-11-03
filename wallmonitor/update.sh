@@ -35,7 +35,6 @@ latest_release="$repository_url/releases/latest/download"
 # APP_DIR=/var/dashboard
 
 # Use new install script
-rm "$APP_DIR/new-install.sh"
 
 script_url="$latest_release/install.sh"
 if [ ! -f "new-install.sh" ]; then

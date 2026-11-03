@@ -53,9 +53,11 @@ if [ ! -f "$APP_DIR/wrapper/wrapper.tar.gz" ]; then
         echo "$msg" >> "$log_file"
         exit 2
     fi
-    mkdir -p "$APP_DIR/wrapper"
-    mv ./wrapper.tar.gz "$APP_DIR/wrapper"
     echo "Downloaded wrapper.tar.gz"  >> "$log_file"
+    mkdir -p "$APP_DIR/wrapper"
+    if [ ! -f "$APP_DIR/wrapper/wrapper.tar.gz" ]; then
+        mv ./wrapper.tar.gz "$APP_DIR/wrapper"
+    fi
 fi
 
 # Install wrapper app

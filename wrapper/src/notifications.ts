@@ -11,7 +11,8 @@ export function setupNotifications(notificationsDivId: string) {
     const currentNotifications: Notification[] = [
         {
             id: "sample",
-            text: "If this shows, update worked!"
+            // text: "If this shows, update worked!"
+            text: "Sample"
         }
     ]
     const notificationsDiv = document.getElementById(notificationsDivId)

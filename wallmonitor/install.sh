@@ -68,15 +68,19 @@ repository_url="https://github.com/tmoleary21/dashboard"
 versioned_release="$repository_url/releases/download/$VERSION"
 
 if [ ! -f "$APP_DIR/wallmonitor.tar.gz" ]; then
+    echo "Downloading wallmonitor.tar.gz"
     wallmonitor_url="$versioned_release/wallmonitor.tar.gz"
     if ! wget "$wallmonitor_url"; then
-    msg="Could not retrieve wallmonitor scripts from $wallmonitor_url"
-    echo $msg >&2
-    echo $msg >> $log_file
-    exit 2
+        msg="Could not retrieve wallmonitor scripts from $wallmonitor_url"
+        echo $msg >&2
+        echo $msg >> $log_file
+        exit 2
     fi
-    mv ./wallmonitor.tar.gz "$APP_DIR"
-    echo "Downloaded wallmonitor.tar.gz"  >> $log_file
+    echo "Downloaded wallmonitor.tar.gz"
+    echo "Downloaded wallmonitor.tar.gz" >> $log_file
+    if [ ! -f "$APP_DIR/wallmonitor.tar.gz" ]; then
+        mv ./wallmonitor.tar.gz "$APP_DIR"
+    fi
 fi
 
 # Install scripts
