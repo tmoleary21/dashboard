@@ -40,7 +40,7 @@ jobs:
       - name: Package dist
         run: |
           zip -r "./dashboard-dist.zip" dist
-          tar -czf "./dashboard-dist.tar.gz" dist
+          tar -czf --owner=0 --group=0 --numeric-owner "./dashboard-dist.tar.gz" dist
 
       - name: Upload dist to release
         env:
@@ -82,7 +82,7 @@ jobs:
       - name: Package
         run: |
           zip -r "./wrapper.zip" server
-          tar -czf "./wrapper.tar.gz" server
+          tar -czf --owner=0 --group=0 --numeric-owner "./wrapper.tar.gz" server
 
       - name: Upload dist to release
         env:
@@ -104,7 +104,7 @@ jobs:
           tag="${{ github.event.release.tag_name }}"
           sed -i "2s|.*|export VERSION=\"${tag}\"|" "wallmonitor/install.sh"
           zip -r "wallmonitor.zip" wallmonitor
-          tar -czf "wallmonitor.tar.gz" wallmonitor
+          tar -czf --owner=0 --group=0 --numeric-owner "wallmonitor.tar.gz" wallmonitor
 
 
       - name: Upload wallmonitor scripts to release

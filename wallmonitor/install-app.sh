@@ -63,10 +63,12 @@ fi
 # Install wrapper app
 cd "$APP_DIR/wrapper"
 rm -rf ./server
-tar -xvf ./wrapper.tar.gz
+tar -xvf --no-same-owner ./wrapper.tar.gz
 rm -f ./wrapper.tar.gz
 cd server
 chmod +x ./start-prod.sh
+
+mkdir -p "$NOTIFICATIONS_DROP_DIR"
 
 cat > .env <<EOF
 VERSION=$VERSION
@@ -122,6 +124,9 @@ fi
 echo "==> Adding '${KIOSK_USER}' to required groups..."
 groupadd -f seat
 usermod -aG video,input,render,seat "$KIOSK_USER"
+
+# Kiosk ownership of the wrapper app
+chown -R "$KIOSK_USER:$KIOSK_USER" "$APP_DIR/wrapper"
 
 echo "Added kiosk user"  >> "$log_file"
 

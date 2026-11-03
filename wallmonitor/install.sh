@@ -83,12 +83,13 @@ fi
 
 # Install scripts
 cd "$APP_DIR"
-tar -xvf ./wallmonitor.tar.gz
+tar -xvf --no-same-owner ./wallmonitor.tar.gz
 rm -f ./wallmonitor.tar.gz
 scripts_dir="$APP_DIR/wallmonitor"
 cd "$scripts_dir"
 echo "Installed scripts"  >> $log_file
 chmod +x ./*.sh
+chown -R root:root "$scripts_dir"
 
 if [[ $DRY != "false" ]]; then
     echo "SKIPPED FOR DRY RUN: creation of update service and install-app.sh in ${scripts_dir}"
