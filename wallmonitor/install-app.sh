@@ -16,9 +16,11 @@ export log_file=${log_file:-"${PWD}/wallmonitor_install.log"}
 # Prompt for config values
 if [ -f "/etc/dashboard/environment.sh" ]; then
     this_version="${VERSION}"
+    this_app_dir="${APP_DIR:-}"
     source /etc/dashboard/environment.sh
     echo "Environment variables enabled"
     export VERSION=${this_version}
+    export APP_DIR="${this_app_dir:-${APP_DIR:-/var/dashboard}}"
 else
 
     APP_DIR=${APP_DIR:-"/var/dashboard"}
