@@ -63,7 +63,7 @@ fi
 # Install wrapper app
 cd "$APP_DIR/wrapper"
 rm -rf ./server
-tar -xvf --no-same-owner ./wrapper.tar.gz
+tar --no-same-owner -xvf ./wrapper.tar.gz
 rm -f ./wrapper.tar.gz
 cd server
 chmod +x ./start-prod.sh

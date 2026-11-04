@@ -83,7 +83,7 @@ fi
 
 # Install scripts
 cd "$APP_DIR"
-tar -xvf --no-same-owner ./wallmonitor.tar.gz
+tar --no-same-owner -xvf ./wallmonitor.tar.gz
 rm -f ./wallmonitor.tar.gz
 scripts_dir="$APP_DIR/wallmonitor"
 cd "$scripts_dir"
