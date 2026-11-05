@@ -129,7 +129,9 @@ usermod -aG video,input,render,seat "$KIOSK_USER"
 chown -R "$KIOSK_USER:$KIOSK_USER" "$APP_DIR/wrapper"
 
 # Ensure kiosk user's .config directory exists
-mkdir -p /home/$KIOSK_USER/.config
+kiosk_config_dir=/home/$KIOSK_USER/.config
+mkdir -p "$kiosk_config_dir"
+chown -R "$KIOSK_USER:$KIOSK_USER" "$kiosk_config_dir"
 
 echo "Added kiosk user"  >> "$log_file"
 
