@@ -129,9 +129,10 @@ usermod -aG video,input,render,seat "$KIOSK_USER"
 chown -R "$KIOSK_USER:$KIOSK_USER" "$APP_DIR/wrapper"
 
 # Ensure kiosk user's .config directory exists
-kiosk_config_dir=/home/$KIOSK_USER/.config
-mkdir -p "$kiosk_config_dir"
-chown -R "$KIOSK_USER:$KIOSK_USER" "$kiosk_config_dir"
+kiosk_local=/home/$KIOSK_USER/.local
+epiphany_profile_dir="$kiosk_local/share/wallmonitor-kiosk"
+mkdir -p "$epiphany_profile_dir"
+chown -R "$KIOSK_USER:$KIOSK_USER" "$kiosk_local"
 
 echo "Added kiosk user"  >> "$log_file"
 
@@ -207,9 +208,9 @@ ExecStartPre=/bin/sh -c 'for i in \$(seq 1 60); do wget -q -O /dev/null "$KIOSK_
 #     --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
 #     --disable-features=TranslateUI --no-first-run \\
 #     --check-for-update-interval=31536000
-ExecStart=/usr/bin/cage -s -d -- /usr/bin/epiphany-browser -a --profile /home/$KIOSK_USER/.config "$KIOSK_URL"
+ExecStart=/usr/bin/cage -s -d -- /usr/bin/epiphany-browser -a --profile="$epiphany_profile_dir" "$KIOSK_URL"
 Restart=always
-RestartSec=2
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
