@@ -104,11 +104,11 @@ echo "Generated environment.sh"  >> "$log_file"
 apt-get update
 
 # Install:
-# - chromium for browser to load the webapp
+# - epiphany-browser for browser to load the webapp
 # - cage to be the single-window display server
 # - seatd as a dependency to cage
 # - uv for running python server
-apt-get install -y cage chromium seatd >> "$log_file"
+apt-get install -y cage epiphany-browser seatd >> "$log_file"
 systemctl enable --now seatd
 
 echo "Updated software and installed dependencies"  >> "$log_file"
@@ -127,6 +127,9 @@ usermod -aG video,input,render,seat "$KIOSK_USER"
 
 # Kiosk ownership of the wrapper app
 chown -R "$KIOSK_USER:$KIOSK_USER" "$APP_DIR/wrapper"
+
+# Ensure kiosk user's .config directory exists
+mkdir -p /home/$KIOSK_USER/.config
 
 echo "Added kiosk user"  >> "$log_file"
 
@@ -195,13 +198,14 @@ UtmpMode=user
 
 # wallmonitor-wrapper is Type=simple, so systemd considers it started as soon as
 # python3 execs - before the socket is listening. Wait for a real response so
-# chromium doesn't load an error page and sit on it.
+# browser doesn't load an error page and sit on it.
 ExecStartPre=/bin/sh -c 'for i in \$(seq 1 60); do wget -q -O /dev/null "$KIOSK_URL" && exit 0; sleep 0.5; done; exit 1'
-ExecStart=/usr/bin/cage -s -d -- /usr/bin/chromium --kiosk --app=$KIOSK_URL \\
-    --enable-features=UseOzonePlatform --ozone-platform=wayland \\
-    --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
-    --disable-features=TranslateUI --no-first-run \\
-    --check-for-update-interval=31536000
+# ExecStart=/usr/bin/cage -s -d -- /usr/bin/chromium --kiosk --app=$KIOSK_URL \\
+#     --enable-features=UseOzonePlatform --ozone-platform=wayland \\
+#     --noerrdialogs --disable-infobars --disable-session-crashed-bubble \\
+#     --disable-features=TranslateUI --no-first-run \\
+#     --check-for-update-interval=31536000
+ExecStart=/usr/bin/cage -s -d -- /usr/bin/epiphany-browser -a --profile /home/$KIOSK_USER/.config "$KIOSK_URL"
 Restart=always
 RestartSec=2
 
