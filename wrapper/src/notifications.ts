@@ -8,12 +8,7 @@ interface Notification {
 
 export function setupNotifications(notificationsDivId: string) {
 
-    const currentNotifications: Notification[] = [
-        {
-            id: "sample",
-            text: "The wallmonitor was not able to update on the most recent update"
-        }
-    ]
+    const currentNotifications: Notification[] = []
     const notificationsDiv = document.getElementById(notificationsDivId)
     if(!notificationsDiv) return
 

@@ -15,34 +15,65 @@ fi
 
 # Prepare
 
-if [ -f ./environment.sh ]; then
-    source ./environment.sh
+if [ -f "/etc/dashboard/environment.sh" ]; then
+    source /etc/dashboard/environment.sh
+    echo "Environment variables enabled"
 fi
 
-log_file=./wallmonitor_install.log
+VERSION=${VERSION:-}
+APP_DIR=${APP_DIR:-}
+
+if [ -z "$APP_DIR" ]; then
+    echo "APP_DIR variable empty"
+    exit 4
+fi
+
+export log_file=${log_file:-"${PWD}/wallmonitor_install.log"}
 
 repository_url="https://github.com/tmoleary21/dashboard"
 latest_release="$repository_url/releases/latest/download"
-app_dir=/var/dashboard
+# APP_DIR=/var/dashboard
 
 # Use new install script
 
 script_url="$latest_release/install.sh"
 if [ ! -f "new-install.sh" ]; then
-    if ! wget -O new-install.sh "$script_url" >> $log_file; then
+    if ! wget -O new-install.sh "$script_url" >> "$log_file"; then
         exit 2
     fi
 fi
-mv new-install.sh "$app_dir"
-cd "$app_dir"
-script_path="./install.sh"
+mv new-install.sh "$APP_DIR"
+cd "$APP_DIR"
 
 if [ -z "$VERSION" ]; then
-    VERSION=old
+    OLD_DIR=old
+else
+    OLD_DIR="$VERSION"
 fi
-mkdir -p "$app_dir/$VERSION"
-mv wallmonitor wrapper "$app_dir/$VERSION"
+mkdir -p "$APP_DIR/$OLD_DIR"
+mv wallmonitor wrapper "$APP_DIR/$OLD_DIR"
+rm -rf ./*.tar.gz
 
+script_path="./install.sh"
 mv new-install.sh "$script_path"
 chmod +x "$script_path"
-exec ./install.sh
+# exec ./install.sh
+
+install_status=0
+./install.sh || install_status=$?
+if [ ! $install_status -eq 0 ]; then
+    cd "$APP_DIR"
+    rm -rf ./wallmonitor ./wrapper ./*.tar.gz ./install.sh
+    cp -a "$APP_DIR/$OLD_DIR/." "$APP_DIR/" # Rollback
+    
+    cp ./wallmonitor/install.sh ./install.sh
+    chmod +x ./install.sh
+
+    rollback_status=0
+    ./install.sh || rollback_status=$?
+    
+    if [ "$rollback_status" -eq 0 ]; then
+        rm -rf "./$OLD_DIR" # Don't remove backup if failed to reinstall
+    fi
+    exit "$install_status"
+fi

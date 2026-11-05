@@ -18,11 +18,50 @@ fi
 
 # Prepare
 
-if [ -f ./environment.sh ]; then
-    source ./environment.sh
+notify() {
+    local message="$1"
+
+    echo "$message" >&2
+    echo "$message" >> "$log_file" || true
+
+    if [[ ! -n "$NOTIFICATIONS_DROP_DIR" ]]; then
+        msg="Could not create notification. NOTIFICATIONS_DROP_DIR empty"
+        echo "$msg" >&2
+        echo "$msg" >> "$log_file" || true
+        return
+    fi
+
+    local dir="${NOTIFICATIONS_DROP_DIR}"
+
+    if mkdir -p "$dir" 2>/dev/null; then
+        echo "$message" >> "$dir/note_$(date +"%Y-%m-%d_%H-%M-%S").txt" 2>/dev/null || true
+    fi
+}
+
+if [ -f "/etc/dashboard/environment.sh" ]; then
+    source /etc/dashboard/environment.sh
+    echo "Environment variables enabled"
 fi
 
-log_file=./wallmonitor_install.log
+export log_file=${log_file:-"${PWD}/wallmonitor_install.log"}
+
+
+# Wait for network availability
+
+i=1
+until wget --spider --timeout=5 --tries=1 https://github.com > /dev/null 2>&1; do
+  echo "Waiting for DNS and Network... (tried $i)"
+  sleep 2
+  ((++i))
+
+  if [ $i -gt 5 ]; then
+    notify "Could not access github.com for update"
+    exit 3 # No network access after multiple tries
+  fi
+
+done
+echo "DNS and Network are up!"
+
 
 # Check update
 #
@@ -33,13 +72,14 @@ log_file=./wallmonitor_install.log
 # download degrades to running the current version rather than to no display.
 
 if ./check-update.sh; then
-    error_output=$({ ./update.sh; } 3>&1 1>&3 2>&1)
-    if [ ! $? -eq 0 ]; then
-        datetime=$(date +%Y-%m-%d_%H-%M-%S)
-        echo "$error_output" > "$NOTIFICATIONS_DROP_DIR/$datetime.txt"
+    update_status=0
+    error_output=$({ ./update.sh; } 3>&1 1>&3 2>&1) || update_status=$?
+    if [ ! $update_status -eq 0 ]; then
+        notify "$error_output"
+        exit $update_status
     fi
 else
-    echo "already at latest release" >> $log_file
+    echo "already at latest release" >> "$log_file"
     exit 2 # No update
 fi
 
