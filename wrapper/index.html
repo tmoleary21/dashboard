@@ -59,6 +59,8 @@
       
     </div>
 
+    <div class="version-box"></div>
+
     <script type="module" src="/src/main.ts"></script>
 
   </body>
@@ -76,6 +78,8 @@
       flex-direction: column;
       align-items: end;
       gap: 10px;
+
+      pointer-events: none;
     }
 
     .controls-row {
@@ -93,6 +97,8 @@
       background: linear-gradient(to bottom left, #1e90ff, #8a2be2);
       color: #fff;
       cursor: pointer;
+
+      pointer-events: auto;
     }
 
     /* Closed, this collapses to exactly the menu button's circle with a
@@ -188,6 +194,7 @@
       .options,
       .option,
       .badge,
+      .version-box,
       #menu i {
         transition-duration: 0.01ms;
         transition-delay: 0ms;
@@ -300,6 +307,21 @@
 
     .no-display {
       display: none
+    }
+
+    .version-box {
+      /* Shared motion tokens: inherited by the menu and the notifications. */
+      --ease: cubic-bezier(0.25, 1, 0.5, 1);
+      --duration: 0.45s;
+
+      position:absolute;
+      bottom:0;
+      right:0;
+      z-index: 1;
+      padding: 5px;
+
+      background-color: white;
+      border-top-left-radius: 10px;
     }
   </style>
 </html>

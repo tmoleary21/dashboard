@@ -14,17 +14,15 @@ fi
 
 # Prepare
 
-if [ -f ./environment.sh ]; then
-    source ./environment.sh
+if [ -f "/etc/dashboard/environment.sh" ]; then
+    source /etc/dashboard/environment.sh
+    echo "Environment variables enabled"
 fi
 
-log_file=./wallmonitor_install.log
+export log_file=${log_file:-"${PWD}/wallmonitor_install.log"}
 
 repository_url="https://github.com/tmoleary21/dashboard"
 latest_release="$repository_url/releases/latest/download"
-app_dir=/var/dashboard
-mkdir -p "$app_dir"
-
 
 # Check update
 script_url="$latest_release/install.sh"
