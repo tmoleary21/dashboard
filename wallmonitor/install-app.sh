@@ -193,6 +193,9 @@ StandardError=journal
 UtmpIdentifier=tty1
 UtmpMode=user
 
+CapabilityBoundingSet=
+AmbientCapabilities=
+
 # wallmonitor-wrapper is Type=simple, so systemd considers it started as soon as
 # python3 execs - before the socket is listening. Wait for a real response so
 # browser doesn't load an error page and sit on it.
