@@ -128,10 +128,6 @@ usermod -aG video,input,render,seat "$KIOSK_USER"
 # Kiosk ownership of the wrapper app
 chown -R "$KIOSK_USER:$KIOSK_USER" "$APP_DIR/wrapper"
 
-# Ensure kiosk user's .config directory exists
-kiosk_local=/home/$KIOSK_USER/.local
-chown -R "$KIOSK_USER:$KIOSK_USER" "$kiosk_local"
-
 echo "Added kiosk user"  >> "$log_file"
 
 # Install UV for kiosk user
